@@ -345,10 +345,10 @@ Environment variables are documented in [`.env.example`](../.env.example). Remot
 
 | Parameter | Default | Effect |
 |---|---|---|
-| `model_vision` | `gemini-3.8-flash` | Cloud model for `read` |
-| `model_text` | `gemini-3.5-flash-lite` | Cloud model for `analyze` and `help` |
+| `model_vision` | `gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen` | Cloud models for `read`; the first is preferred |
+| `model_text` | `gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash` | Cloud models for `analyze` and `help`; the first is preferred |
 | `long_input_chars` | `3500` | Router threshold for `long_input` |
-| `daily_cloud_cap` | `80` | Cloud calls per browser per day |
+| `daily_cloud_cap` | `40` | Cloud calls per browser per day |
 
 ## Testing
 

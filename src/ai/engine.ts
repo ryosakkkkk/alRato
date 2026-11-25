@@ -5,6 +5,7 @@ import {
   InferenceMode,
   InferenceSource,
   type GenerativeModel,
+  type HybridParams,
   type Part,
 } from 'firebase/ai';
 import { db } from '../core/db';
@@ -15,15 +16,23 @@ import type { AiTask, InferenceOrigin, Lang, Receipt, RouteReason } from '../cor
 import { firebaseApp, isCloudConfigured } from '../firebase/app';
 import { remote } from '../firebase/remoteConfig';
 import { expectedIO, hasPromptApi, isMeteredConnection, refreshDevice, reportDownloadProgress } from './device';
-import { AlRatoAiError, classifyError, WaitForRoute } from './errors';
+import { AlRatoAiError, classifyError, WaitForRoute, type AiFailure } from './errors';
+import { allModelsExhausted, isModelExhausted, markModelExhausted } from './quota';
 import { decideRoute } from './router';
 import { parseJson } from './validate';
 
 const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });
 
-/** A stuck request must never leave a note "processing" forever. */
-const CLOUD_TIMEOUT_MS = 30_000;
-const DEVICE_TIMEOUT_MS = 120_000;
+/**
+ * A cloud call must never hold an interaction for long. Reading a photo is slower than
+ * organizing or hinting, so it gets more time.
+ */
+const CLOUD_TIMEOUT_MS = 15_000;
+const READ_TIMEOUT_MS = 30_000;
+/** On-device inference has no network timeout, and CPU-only machines are slow. */
+const DEVICE_TIMEOUT_MS = 180_000;
+
+const cloudTimeout = (task: AiTask): number => (task === 'read' ? READ_TIMEOUT_MS : CLOUD_TIMEOUT_MS);
 
 /** Parses a Remote Config model setting: the first model is preferred, the rest are backups. */
 export function cloudModels(setting: string): string[] {
@@ -36,10 +45,10 @@ export function cloudModels(setting: string): string[] {
 const modelsFor = (task: AiTask): string[] =>
   cloudModels(task === 'read' ? remote().model_vision : remote().model_text);
 
-function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+function withDeadline<T>(work: Promise<T>, ms: number, failure: AiFailure): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new AlRatoAiError('device_failed', 'deadline')), ms);
+    timer = setTimeout(() => reject(new AlRatoAiError(failure, 'deadline', failure === 'network')), ms);
   });
   return Promise.race([work, deadline]).finally(() => clearTimeout(timer));
 }
@@ -71,8 +80,9 @@ export interface GenerateResult<T> {
   receipt: Receipt;
 }
 
-function buildModel<T>(req: GenerateRequest<T>, mode: InferenceMode, lang: Lang, cloudModel: string): GenerativeModel {
-  return getGenerativeModel(ai, {
+/** The SDK parameters of one request. The same parameters always describe the same model. */
+function modelParams<T>(req: GenerateRequest<T>, mode: InferenceMode, lang: Lang, cloudModel: string): HybridParams {
+  return {
     mode,
     inCloudParams: {
       model: cloudModel,
@@ -92,7 +102,71 @@ function buildModel<T>(req: GenerateRequest<T>, mode: InferenceMode, lang: Lang,
       },
       promptOptions: { responseConstraint: req.schema },
     },
-  }, { timeout: CLOUD_TIMEOUT_MS });
+  };
+}
+
+/**
+ * The SDK creates one Chrome session per request, and it destroys the previous session only
+ * when the same model object serves the next request. Reusing one model per configuration keeps
+ * on-device sessions from piling up. A model that is busy, or that failed, is never shared.
+ */
+const MODEL_CACHE_LIMIT = 12;
+interface CachedModel {
+  model: GenerativeModel;
+  busy: boolean;
+}
+const modelCache = new Map<string, CachedModel>();
+
+/** Forgets every cached model. Tests use it to start from a clean state. */
+export function resetModelCache(): void {
+  modelCache.clear();
+}
+
+interface Lease {
+  model: GenerativeModel;
+  /** Call once the request is over. `ok` is false when the request was abandoned mid-way. */
+  done: (ok: boolean) => void;
+}
+
+function leaseModel<T>(
+  req: GenerateRequest<T>,
+  mode: InferenceMode,
+  lang: Lang,
+  cloudModel: string,
+  timeoutMs: number,
+): Lease {
+  const key = JSON.stringify({ params: modelParams(req, mode, lang, cloudModel), timeoutMs });
+  const hit = modelCache.get(key);
+  if (hit && !hit.busy) {
+    hit.busy = true;
+    return {
+      model: hit.model,
+      done: (ok) => {
+        hit.busy = false;
+        if (!ok && modelCache.get(key) === hit) modelCache.delete(key);
+      },
+    };
+  }
+  const model = getGenerativeModel(ai, modelParams(req, mode, lang, cloudModel), { timeout: timeoutMs });
+  // The cached model is serving another request right now, so this one gets its own.
+  if (hit) return { model, done: () => undefined };
+  const entry: CachedModel = { model, busy: true };
+  modelCache.set(key, entry);
+  evictIdle();
+  return {
+    model,
+    done: (ok) => {
+      entry.busy = false;
+      if (!ok && modelCache.get(key) === entry) modelCache.delete(key);
+    },
+  };
+}
+
+function evictIdle(): void {
+  for (const [key, entry] of modelCache) {
+    if (modelCache.size <= MODEL_CACHE_LIMIT) return;
+    if (!entry.busy) modelCache.delete(key);
+  }
 }
 
 async function buildParts(req: GenerateRequest<unknown>): Promise<{ parts: Part[]; imageBytes: number }> {
@@ -136,38 +210,65 @@ async function attempt<T>(
 ): Promise<Attempt> {
   assertOnDevicePossible(mode);
   const started = performance.now();
-  const result = await withDeadline(
-    buildModel(req, mode, lang, cloudModel).generateContent(parts),
-    mode === InferenceMode.ONLY_IN_CLOUD ? CLOUD_TIMEOUT_MS + 2_000 : DEVICE_TIMEOUT_MS,
-  );
+  const timeoutMs = cloudTimeout(req.task);
+  const lease = leaseModel(req, mode, lang, cloudModel, timeoutMs);
+  const deadline =
+    mode === InferenceMode.ONLY_IN_CLOUD
+      ? { ms: timeoutMs + 2_000, failure: 'network' as const }
+      : { ms: DEVICE_TIMEOUT_MS, failure: 'device_failed' as const };
+  const run = async () => {
+    try {
+      const value = await withDeadline(lease.model.generateContent(parts), deadline.ms, deadline.failure);
+      lease.done(true);
+      return value;
+    } catch (error) {
+      lease.done(false);
+      throw error;
+    }
+  };
+  const result = await run();
   const rawText = result.response.text();
   const source: InferenceOrigin =
     result.response.inferenceSource === InferenceSource.ON_DEVICE ? 'on_device' : 'in_cloud';
 
-  // Second line of defense: if a private note ever came back from the cloud, discard it.
-  if (req.isPrivate && source !== 'on_device') {
-    throw new AlRatoAiError('privacy_gate', 'Private note answered by the cloud');
+  // Second line of defense: a note that must stay on the device never gets a cloud answer.
+  if ((req.isPrivate || mode === InferenceMode.ONLY_ON_DEVICE) && source !== 'on_device') {
+    throw new AlRatoAiError('privacy_gate', 'A device-only request was answered by the cloud');
   }
   return { rawText, source, latencyMs: Math.round(performance.now() - started), model: cloudModel };
 }
 
-/** Tries each cloud model in order when one is overloaded or times out. */
+/**
+ * Tries each cloud model in order. A model that is overloaded, slow or out of free requests
+ * for today is skipped. A device-only request never reaches the cloud, so quotas do not apply.
+ */
 async function attemptWithBackups<T>(
   req: GenerateRequest<T>,
   mode: InferenceMode,
   parts: Part[],
   lang: Lang,
 ): Promise<Attempt> {
-  const models = modelsFor(req.task);
+  const chain = modelsFor(req.task);
+  if (mode === InferenceMode.ONLY_ON_DEVICE) {
+    return attempt(req, mode, parts, lang, chain[0] ?? '');
+  }
+  const models = chain.filter((model) => !isModelExhausted(model));
+  if (models.length === 0) throw new WaitForRoute('cloud_cap_no_model');
   let last: AlRatoAiError | undefined;
   for (const model of models) {
     try {
       return await attempt(req, mode, parts, lang, model);
     } catch (error) {
+      if (error instanceof WaitForRoute) throw error;
       last = classifyError(error);
-      if (!last.transient || mode === InferenceMode.ONLY_ON_DEVICE || !navigator.onLine) throw last;
+      if (last.failure === 'quota_daily') {
+        markModelExhausted(model);
+        continue;
+      }
+      if (!last.transient || !navigator.onLine) throw last;
     }
   }
+  if (last?.failure === 'quota_daily') throw new WaitForRoute('cloud_cap_no_model');
   throw last ?? new AlRatoAiError('config', 'no cloud model configured');
 }
 
@@ -175,6 +276,7 @@ async function attemptWithBackups<T>(
 export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResult<T>> {
   const lang = getLang();
   const device = await refreshDevice(lang);
+  const chain = modelsFor(req.task);
   const decision = decideRoute({
     task: req.task,
     isPrivate: req.isPrivate,
@@ -183,7 +285,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
     device: req.image ? device.vision : device.text,
     cloudConfigured: isCloudConfigured,
     cloudConsent: getCloudConsent(),
-    cloudCapReached: (await cloudCallsToday()) >= remote().daily_cloud_cap,
+    cloudCapReached: (await cloudCallsToday()) >= remote().daily_cloud_cap || allModelsExhausted(chain),
     preference: getPreference(),
     inputChars: req.system.length + req.prompt.length,
     longInputChars: remote().long_input_chars,
@@ -207,7 +309,9 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
   try {
     result = await attemptWithBackups(req, mode, parts, lang);
   } catch (error) {
+    if (error instanceof WaitForRoute) throw error;
     const failure = classifyError(error);
+    if (failure.failure === 'quota_daily') throw new WaitForRoute('cloud_cap_no_model');
     if (failure.failure === 'device_failed' && mode !== InferenceMode.ONLY_ON_DEVICE && canRetryInCloud()) {
       // The SDK does not fall back when the on-device call itself fails, so we do.
       mode = InferenceMode.ONLY_IN_CLOUD;
@@ -217,7 +321,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
       // Every cloud model is down or slow, and the SDK only rescues some of those errors.
       mode = InferenceMode.ONLY_ON_DEVICE;
       reason = 'no_cloud';
-      result = await attempt(req, mode, parts, lang, modelsFor(req.task)[0]).catch((e) => {
+      result = await attempt(req, mode, parts, lang, chain[0] ?? '').catch((e) => {
         throw classifyError(e);
       });
     } else {

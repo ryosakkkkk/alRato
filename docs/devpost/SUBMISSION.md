@@ -2,18 +2,9 @@
 
 Ready-to-paste text for every field of the #BuildHybridAI entry. Copy what is inside each box. The notes outside the boxes are for you and do not go on Devpost.
 
-## Before you submit
+## Submission status
 
-These steps need the project owner. Nothing below has been done yet.
-
-- [ ] Create the Firebase project and deploy it ([README, steps 2 to 8](../../README.md#setup)).
-- [ ] Replace `<HOSTED_URL>` and `<REPO_URL>` in the boxes below, and add both links near the top of the README.
-- [ ] Make the GitHub repository public and check that it shows the Apache-2.0 license.
-- [ ] Run the full demo with the real cloud models, and on a machine that can run Gemini Nano. Confirm that the "Connected to your note" moment works with real output.
-- [ ] Publish the video on YouTube (3:00 or less) and upload [`docs/demo/subtitles-en.srt`](../demo/subtitles-en.srt) as captions.
-- [ ] Confirm the statement in [Section 7](#7-what-was-built-during-the-submission-period). The file dates support it, but only you can vouch for it.
-- [ ] Search the repository for keys and personal data before pushing: `git grep -nE "AIza[0-9A-Za-z_-]{20,}"`, and look for your name and email.
-- [ ] After you have real numbers, update the places marked `<!-- MEASURE: ... -->` in the docs. Until then, leave the text as it is. It is accurate.
+Last updated November 25, 2026. Done: the hosted app, the Firebase project with AI Logic and App Check, the public repository, Devpost steps 1 and 2. Still open: the demo video (upload it to YouTube, then add its link to the README and to step 3), the eligibility checkboxes in step 4, and the final submit.
 
 | Contest requirement | Where it is met |
 |---|---|
@@ -93,7 +84,7 @@ We built alRato with **Claude Code**, an AI coding assistant, and we disclose th
 
 **Finding prerequisites, not lookalikes.** Similar text would never connect a Bellman equation to a weighted average. Extracting what each note needs and teaches, with canonical English keys so Spanish and English notes can match, solved that without embeddings and without sending the library anywhere.
 
-**Testing without the hardware.** Our development machine is below Chrome's requirements for Gemini Nano, so we test the on-device path by running the real SDK against a stubbed Prompt API. That proves the integration. It does not measure the model's speed or quality, and we do not claim it does.
+**Testing without the hardware.** Our computers and phones cannot run Gemini Nano, so we ran the real model in a free cloud virtual machine with 4 CPU cores and 16 GB of RAM, using Chrome 158 on Linux. It downloaded the model and answered real prompts. Those runs are single samples, so we present them as proof that the route works, not as a benchmark.
 
 ## Accomplishments that we're proud of
 
@@ -133,14 +124,14 @@ Remove `firebase-hosting` if you do not deploy there.
 ## 5. "Try it out" links
 
 ```text
-<HOSTED_URL>
-<REPO_URL>
+https://alrato-e3564.web.app
+https://github.com/ryosakkkkk/alRato
 ```
 
 ## 6. Testing instructions for judges
 
 ````markdown
-**No account or setup is needed.** Open <HOSTED_URL> in any modern browser.
+**No account or setup is needed.** Open https://alrato-e3564.web.app in any modern browser.
 
 **The five-minute path**
 
@@ -159,10 +150,10 @@ Remove `firebase-hosting` if you do not deploy there.
 - **Private note:** turn on **Keep on this device** before taking a photo. With Gemini Nano it runs locally. Without it, the note waits and no request is sent.
 - **Offline:** set DevTools > Network to **Offline**. With Gemini Nano, hints keep working. Without it, a new photo waits, then finishes by itself when you go back online.
 
-**If you cannot run Gemini Nano**, the on-device path and the privacy gate are covered by automated tests that use the real Firebase SDK with a stubbed Prompt API:
+**If you cannot run Gemini Nano**, the privacy gate and the routing policy are covered by automated tests that use the real Firebase SDK with a stubbed Prompt API:
 
 ```bash
-git clone <REPO_URL>
+git clone https://github.com/ryosakkkkk/alRato
 cd alRato
 npm install
 npm test

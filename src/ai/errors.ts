@@ -4,6 +4,7 @@ import type { WaitReason } from '../core/types';
 export type AiFailure =
   | 'network'
   | 'rate_limited'
+  | 'quota_daily'
   | 'app_check'
   | 'config'
   | 'safety'
@@ -32,6 +33,16 @@ export class WaitForRoute extends Error {
   }
 }
 
+/**
+ * The API names the quota in its error details, for example
+ * "GenerateRequestsPerDayPerProjectPerModel-FreeTier". A per-day quota does not come back
+ * within the hour, so retrying it only spends time.
+ */
+export function isDailyQuota(error: { message: string; customErrorData?: { errorDetails?: unknown } }): boolean {
+  const details = JSON.stringify(error.customErrorData?.errorDetails ?? '');
+  return /PerDay/.test(details) || /per day/i.test(details) || /per day/i.test(error.message);
+}
+
 export function classifyError(error: unknown): AlRatoAiError {
   if (error instanceof AlRatoAiError) return error;
 
@@ -49,6 +60,7 @@ export function classifyError(error: unknown): AlRatoAiError {
     const message = `${error.message} ${JSON.stringify(error.customErrorData?.errorDetails ?? '')}`.toLowerCase();
 
     if (status === 429 || message.includes('resource_exhausted') || message.includes('quota')) {
+      if (isDailyQuota(error)) return new AlRatoAiError('quota_daily', error.message);
       return new AlRatoAiError('rate_limited', error.message, true);
     }
     if (message.includes('app check') || message.includes('appcheck') || message.includes('app-check')) {

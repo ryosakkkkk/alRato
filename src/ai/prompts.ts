@@ -2,7 +2,7 @@ import type { Candidate } from '../core/retrieval';
 import { clip } from '../core/text';
 import type { HelpAction, Lang } from '../core/types';
 
-export const PROMPT_VERSION = '2026-11-a';
+export const PROMPT_VERSION = '2026-11-b';
 
 /** Keeps every request inside Gemini Nano's input budget. */
 export const MAX_NOTE_CHARS = 2400;
@@ -27,8 +27,8 @@ export const readPrompt = (comment: string): string =>
 
 export const analyzeSystem = (lang: Lang): string =>
   `You organize a university student's class note. Return JSON with:
-- kind: "board" (lecture board or slide), "formula" (formula or definition), "exercise" (problem to solve), "question" (a doubt), or "other".
-- title: at most 6 words, in ${languageName(lang)}.
+- kind: what the note itself is, judged from its text: "board" (lecture board or slide), "formula" (formula or definition), "exercise" (a problem to solve), "question" (a question with no problem attached), or "other". A comment from the student does not change the kind.
+- title: names what the note itself covers, at most 6 words, in ${languageName(lang)}. Do not repeat the student's comment.
 - subject: the broad course, in ${languageName(lang)}. Example: "Statistics".
 - topic: the specific topic, in ${languageName(lang)}.
 - teaches: up to 4 concepts this note explains, in ${languageName(lang)}.

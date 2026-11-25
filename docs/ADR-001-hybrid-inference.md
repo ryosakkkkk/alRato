@@ -19,7 +19,7 @@ The forces that shaped this decision:
 3. **The input is hard.** Boards contain handwriting, math notation and bad lighting, in English or Spanish.
 4. **Students pay for data.** A photo is the largest thing the app sends, and connections in a classroom are unreliable.
 5. **Some notes are personal.** A student must be able to say "this stays on my device" and have that hold.
-6. **Quota is finite.** The default cloud models, `gemini-3.8-flash` and `gemini-3.5-flash-lite`, are [marked "billing not required"](https://firebase.google.com/docs/ai-logic/models) on the Gemini Developer API, which has usage limits.
+6. **Quota is finite.** The default cloud models are [marked "billing not required"](https://firebase.google.com/docs/ai-logic/models) on the Gemini Developer API, which has usage limits. On Nov 24, 2026, Google AI Studio showed 500 requests a day each for `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite`, and 20 a day for `gemini-3.8-flash`, per project and shared by every user.
 7. **Attention is the scarcest resource.** Capture has to take seconds, because the student needs to look back at the board.
 
 ## Decision
@@ -68,7 +68,7 @@ We have not measured on-device or cloud latency yet, so this reasoning is archit
 There are two budgets, and the student's is the one that matters more.
 
 - **The student's mobile data.** Photos are the largest payload. On a metered connection with a local model available, the router reads the photo on the device (`save_data`).
-- **API quota.** Organizing and hints are the most frequent calls. Running them on-device costs no quota and saves it for the task that benefits most from the cloud. A per-browser daily cap (`daily_cloud_cap`, default 80) keeps a loop or a bug from draining the free tier.
+- **API quota.** Organizing and hints are the most frequent calls. Running them on-device costs no quota and saves it for the task that benefits most from the cloud. A per-browser daily cap (`daily_cloud_cap`, default 40) and a per-model quota check (a model that has used its daily quota is skipped until midnight Pacific time) keep a loop or a bug from draining the shared free tier.
 - **The device's cost.** The local model is a one-time download that needs an unmetered connection and a lot of free disk. We never trigger it without a click.
 
 <!-- MEASURE: typical bytes per note on the cloud route, from real receipts -->

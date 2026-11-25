@@ -6,7 +6,7 @@
       "valueType": "STRING"
     },
     "model_text": {
-      "defaultValue": { "value": "gemini-3.5-flash-lite,gemini-3.8-flash" },
+      "defaultValue": { "value": "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash" },
       "description": "Cloud models for organizing notes and writing hints, comma-separated. The first is preferred, the rest are backups.",
       "valueType": "STRING"
     },
@@ -16,7 +16,7 @@
       "valueType": "NUMBER"
     },
     "daily_cloud_cap": {
-      "defaultValue": { "value": "80" },
+      "defaultValue": { "value": "40" },
       "description": "Cloud calls per device per day. After that, the device or the queue takes over.",
       "valueType": "NUMBER"
     }

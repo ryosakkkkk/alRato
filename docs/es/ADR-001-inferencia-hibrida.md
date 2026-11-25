@@ -21,7 +21,7 @@ Las fuerzas que definieron esta decisión fueron:
 3. **La entrada es difícil.** Una pizarra tiene letra a mano, notación matemática y mala iluminación, en inglés o en español.
 4. **Los estudiantes pagan sus datos móviles.** La foto es lo más pesado que envía la aplicación, y la conexión en un salón de clases no siempre es confiable.
 5. **Algunos apuntes son personales.** El estudiante debe poder decir "esto se queda en mi dispositivo" y que eso se cumpla.
-6. **La cuota es limitada.** Los modelos en la nube por defecto, `gemini-3.8-flash` y `gemini-3.5-flash-lite`, figuran como ["billing not required"](https://firebase.google.com/docs/ai-logic/models) en la Gemini Developer API, que tiene límites de uso.
+6. **La cuota es limitada.** Los modelos en la nube por defecto figuran como ["billing not required"](https://firebase.google.com/docs/ai-logic/models) en la Gemini Developer API, que tiene límites de uso. El 24 de noviembre de 2026, Google AI Studio mostró 500 solicitudes diarias para cada uno de `gemini-3.5-flash-lite` y `gemini-3.1-flash-lite`, y 20 para `gemini-3.8-flash`, por proyecto y compartidas por todos los usuarios.
 7. **La atención es el recurso más escaso.** Capturar debe tomar segundos, porque el estudiante necesita volver a mirar la pizarra.
 
 ## Decisión
@@ -70,7 +70,7 @@ Todavía no hemos medido la latencia en el dispositivo ni en la nube, así que e
 Hay dos presupuestos, y el del estudiante es el que más importa.
 
 - **Los datos móviles del estudiante.** Las fotos son la carga más pesada. Con una conexión medida y un modelo local disponible, el enrutador lee la foto en el dispositivo (`save_data`).
-- **La cuota de la API.** Organizar y dar pistas son las llamadas más frecuentes. Ejecutarlas en el dispositivo no consume cuota y la reserva para la tarea que más gana con la nube. Un tope diario por navegador (`daily_cloud_cap`, 80 por defecto) evita que un bucle o un error agote la capa gratuita.
+- **La cuota de la API.** Organizar y dar pistas son las llamadas más frecuentes. Ejecutarlas en el dispositivo no consume cuota y la reserva para la tarea que más gana con la nube. Un tope diario por navegador (`daily_cloud_cap`, 40 por defecto) y una revisión de cuota por modelo (un modelo que agotó su cupo diario se omite hasta la medianoche del Pacífico) evitan que un bucle o un error agote la capa gratuita compartida.
 - **El costo para el dispositivo.** El modelo local es una descarga única que requiere una conexión sin límite y bastante disco libre. Nunca la iniciamos sin un clic del estudiante.
 
 <!-- MEASURE: bytes típicos por apunte en la ruta de nube, tomados de comprobantes reales -->

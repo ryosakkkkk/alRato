@@ -1,7 +1,8 @@
 import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode } from 'firebase/ai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { assertOnDevicePossible, generate, type GenerateRequest } from '../src/ai/engine';
+import { assertOnDevicePossible, generate, resetModelCache, type GenerateRequest } from '../src/ai/engine';
 import { WaitForRoute } from '../src/ai/errors';
+import { isModelExhausted } from '../src/ai/quota';
 import { READ_SCHEMA } from '../src/ai/schemas';
 import { validateRead, type ReadOutput } from '../src/ai/validate';
 import { setCloudConsent } from '../src/core/consent';
@@ -58,6 +59,7 @@ let online: ReturnType<typeof vi.spyOn>;
 beforeEach(async () => {
   await db.usage.clear();
   localStorage.clear();
+  resetModelCache();
   setCloudConsent('granted');
   removeNano();
   fetchMock = vi.fn(async () => cloudResponse(CLOUD_JSON));
@@ -195,8 +197,8 @@ describe('hybrid routing through the real SDK', () => {
     expect(data.text).toBe('from the cloud');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0][0])).toContain('gemini-3.5-flash-lite');
-    expect(String(fetchMock.mock.calls[1][0])).toContain('gemini-3.8-flash');
-    expect(receipt.model).toBe('gemini-3.8-flash');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('gemini-3.1-flash-lite');
+    expect(receipt.model).toBe('gemini-3.1-flash-lite');
   });
 
   it('treats a request timeout as temporary and moves to the next model', async () => {
@@ -205,7 +207,7 @@ describe('hybrid routing through the real SDK', () => {
     });
     const { receipt } = await generate(request());
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(receipt.model).toBe('gemini-3.8-flash');
+    expect(receipt.model).toBe('gemini-3.1-flash-lite');
   });
 
   it('treats a dropped connection as temporary, so the note stays retryable', async () => {
@@ -213,7 +215,7 @@ describe('hybrid routing through the real SDK', () => {
       throw new TypeError('Failed to fetch');
     });
     await expect(generate(request())).rejects.toMatchObject({ failure: 'network', transient: true });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('does not waste backup models on a permission error', async () => {
@@ -265,5 +267,80 @@ describe('hybrid routing through the real SDK', () => {
     );
     await expect(generate(request())).rejects.toMatchObject({ reason: 'cloud_cap_no_model' });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('daily quotas and backup models', () => {
+  const perDayBody = JSON.stringify({
+    error: {
+      code: 429,
+      message: 'Quota exceeded for metric: generate_content_free_tier_requests',
+      status: 'RESOURCE_EXHAUSTED',
+      details: [
+        {
+          '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+          violations: [{ quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', quotaValue: '500' }],
+        },
+      ],
+    },
+  });
+
+  it('moves to a backup model after a daily quota error, and stops asking the exhausted model', async () => {
+    fetchMock.mockImplementationOnce(async () => new Response(perDayBody, { status: 429 }));
+    const { receipt } = await generate(request());
+    expect(receipt.model).toBe('gemini-3.1-flash-lite');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('gemini-3.5-flash-lite');
+    expect(String(fetchMock.mock.calls[1][0])).toContain('gemini-3.1-flash-lite');
+    expect(isModelExhausted('gemini-3.5-flash-lite')).toBe(true);
+
+    fetchMock.mockClear();
+    const second = await generate(request());
+    expect(second.receipt.model).toBe('gemini-3.1-flash-lite');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('gemini-3.1-flash-lite');
+  });
+
+  it('waits for tomorrow when every cloud model is out for the day', async () => {
+    fetchMock.mockImplementation(async () => new Response(perDayBody, { status: 429 }));
+    await expect(generate(request())).rejects.toMatchObject({ reason: 'cloud_cap_no_model' });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('answers on the device when every cloud model is out for the day', async () => {
+    const until = Date.now() + 3_600_000;
+    localStorage.setItem(
+      'alrato.cloudQuotaOut.v1',
+      JSON.stringify({ 'gemini-3.5-flash-lite': until, 'gemini-3.1-flash-lite': until, 'gemini-3.8-flash': until }),
+    );
+    installNano(async () => NANO_JSON);
+    const { receipt } = await generate(request());
+    expect(receipt).toMatchObject({ source: 'on_device', reason: 'cloud_cap', bytesSent: 0 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a private note on the device even when the cloud quota is gone', async () => {
+    const until = Date.now() + 3_600_000;
+    localStorage.setItem(
+      'alrato.cloudQuotaOut.v1',
+      JSON.stringify({ 'gemini-3.5-flash-lite': until, 'gemini-3.1-flash-lite': until, 'gemini-3.8-flash': until }),
+    );
+    installNano(async () => NANO_JSON);
+    const { receipt } = await generate(request({ isPrivate: true }));
+    expect(receipt).toMatchObject({ source: 'on_device', bytesSent: 0 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('on-device sessions', () => {
+  it('reuses one on-device model for repeated requests, so each previous session is destroyed', async () => {
+    const destroy = vi.fn();
+    const create = vi.fn(async () => ({ prompt: vi.fn(async () => NANO_JSON), destroy }));
+    const api = { availability: vi.fn(async () => 'available'), create };
+    vi.stubGlobal('LanguageModel', api);
+    (window as unknown as { LanguageModel: unknown }).LanguageModel = api;
+    for (let i = 0; i < 3; i += 1) {
+      await generate(request({ isPrivate: true }));
+    }
+    expect(create).toHaveBeenCalledTimes(3);
+    expect(destroy).toHaveBeenCalledTimes(2);
   });
 });

@@ -8,9 +8,9 @@ import { firebaseApp, isFirebaseConfigured } from './app';
  */
 export const RC_DEFAULTS = {
   model_vision: 'gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen',
-  model_text: 'gemini-3.5-flash-lite,gemini-3.8-flash',
+  model_text: 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash',
   long_input_chars: 3500,
-  daily_cloud_cap: 80,
+  daily_cloud_cap: 40,
 };
 
 export type RemoteValues = typeof RC_DEFAULTS;

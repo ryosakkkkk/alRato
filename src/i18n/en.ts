@@ -168,6 +168,7 @@ export const en = {
   'error.privacy_gate': 'Blocked to protect a private note.',
   'error.stale': 'The note changed, so that answer was discarded.',
   'error.unknown': 'Something went wrong.',
+  'error.quota_daily': 'Today’s free cloud quota is used up. On-device AI still works, and cloud notes continue tomorrow.',
 
   'ai.title': 'Your AI',
   'ai.intro': 'alRato picks where each task runs and shows you the proof.',

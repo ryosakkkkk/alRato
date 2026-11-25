@@ -170,6 +170,7 @@ export const es: Record<MessageKey, string> = {
   'error.privacy_gate': 'Bloqueado para proteger un apunte privado.',
   'error.stale': 'El apunte cambió, así que esa respuesta se descartó.',
   'error.unknown': 'Algo salió mal.',
+  'error.quota_daily': 'Se agotó hoy el cupo gratuito de la nube. La IA en el dispositivo sigue funcionando, y los apuntes en la nube continúan mañana.',
 
   'ai.title': 'Tu IA',
   'ai.intro': 'alRato elige dónde corre cada tarea y te muestra la prueba.',

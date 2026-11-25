@@ -4,7 +4,7 @@
 
 Students photograph the board and often never open the photo again. alRato ("al rato" is Latin American Spanish for "in a little while") keeps that two-second habit and does the rest afterward: it reads the photo, organizes it, coaches the student through a Socratic hint ladder, connects the new note to one they already have, and schedules spaced practice.
 
-<!-- FILL: add "Watch the demo" (YouTube) and "Try it" (hosted URL) links on this line once both exist. -->
+**Try it:** [alrato-e3564.web.app](https://alrato-e3564.web.app) · **Watch the demo:** video coming soon (3 minutes, in English)
 
 | | |
 |---|---|
@@ -121,7 +121,7 @@ flowchart TB
         AppCheck --> AILogic
     end
 
-    Gemini["Gemini in the cloud<br/>gemini-3.8-flash (vision)<br/>gemini-3.5-flash-lite (text)"]
+    Gemini["Gemini in the cloud<br/>gemini-3.5-flash-lite (first choice)<br/>backups: gemini-3.1-flash-lite, gemini-3.8-flash"]
 
     Engine -- "in cloud, never for private notes" --> AppCheck
     AILogic --> Gemini
@@ -236,10 +236,10 @@ The app ships with safe defaults, so this step is optional. To change them from 
 
 | Parameter | Default | Purpose |
 |---|---|---|
-| `model_vision` | `gemini-3.8-flash` | Cloud model for reading photos |
-| `model_text` | `gemini-3.5-flash-lite` | Cloud model for organizing and hints |
+| `model_vision` | `gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen` | Cloud models for reading photos. The first is preferred, the rest are backups |
+| `model_text` | `gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash` | Cloud models for organizing and hints. The first is preferred, the rest are backups |
 | `long_input_chars` | `3500` | Above this, text tasks prefer the cloud |
-| `daily_cloud_cap` | `80` | Cloud calls per browser per day before the device or the queue takes over |
+| `daily_cloud_cap` | `40` | Cloud calls per browser per day before the device or the queue takes over |
 
 ### 7. Firestore and Google sign-in (optional)
 
@@ -295,7 +295,7 @@ On-device inference through Firebase AI Logic needs **Chrome on desktop**. Chrom
 
 ### The five-minute path
 
-1. Open the hosted app. <!-- FILL: hosted URL --> English is the default unless your browser is set to Spanish. You can switch under **Your AI > Language**.
+1. Open the hosted app at [alrato-e3564.web.app](https://alrato-e3564.web.app). English is the default unless your browser is set to Spanish. You can switch under **Your AI > Language**.
 2. On the home screen, click **Try it with sample notes**. Two ready-made notes appear: *Weighted average* and *Ohm's law*.
 3. Click **Add the Bellman board**. This creates a new photo of a board that goes through the real AI pipeline. On a browser without Gemini Nano, a short notice explains the cloud route first: choose **I am 18+ and I agree** to continue, or keep everything on the device.
 4. Wait for **Reading your photo…** and **Organizing your note…** to finish. Each step leaves a receipt.
@@ -358,7 +358,8 @@ Firebase, Gemini and Chrome are trademarks of Google LLC. alRato is an independe
 ## Known limitations
 
 - **No learning evaluation yet.** The design follows published research, but alRato has not been tested with students, so we make no claim about learning gains.
-- **On-device path not yet measured on real hardware.** It is tested through the real SDK with a stubbed Prompt API. The machine alRato was developed on is below Chrome's hardware floor for Gemini Nano. <!-- MEASURE: on-device latency, per task, on a machine that meets the requirements -->
+- **The on-device path has run once, on a cloud machine.** Gemini Nano ran for real, on CPU only, in a free cloud virtual machine (4 cores, 16 GB RAM, Chrome 158 on Linux). The model took 152 seconds to download, and single runs took 4.3 s for a Spanish sentence, 3.2 s for JSON and 6.9 s for a short board image. The team's own computers and phones cannot run Gemini Nano, so there is no on-device measurement on a phone yet. <!-- MEASURE: on-device latency on a machine that meets the requirements -->
+- **The free cloud tier is shared.** Gemini's free tier counts requests per Google Cloud project, so every visitor of the hosted app shares it. On Nov 24, 2026, Google AI Studio showed 500 requests a day each for gemini-3.5-flash-lite and gemini-3.1-flash-lite, and 20 a day for gemini-3.8-flash. When a model's daily quota is gone, a device stops asking that model until midnight Pacific time, and it answers on the device or waits. A cap of 40 cloud calls per browser per day keeps one heavy user from using up the shared quota.
 - **Model quality is unmeasured.** We have no accuracy figures for reading handwriting and math on either route, or for how often teaches/needs extraction finds the right link. A connection appears only if the model names a matching prerequisite and agrees the note helps. <!-- MEASURE: transcription accuracy on real board photos, cloud vs Nano --> <!-- MEASURE: precision of "Connected to your note" on real notes -->
 - **On-device needs desktop Chrome with capable hardware.** Phones use the cloud route, and a private note on a phone waits until a device with a local model is available.
 - **Privacy starts at capture.** Marking an existing note private cannot recall what was already sent, including a request already on its way. Its answer is discarded and nothing more is sent. Set the switch before you take the photo.
