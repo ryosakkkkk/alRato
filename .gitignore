@@ -1,0 +1,22 @@
+node_modules/
+dist/
+dev-dist/
+coverage/
+.local/
+.firebase/
+*.log
+
+# Secrets and per-developer Firebase config never go in the repository
+.env
+.env.*
+!.env.example
+.firebaserc
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/

@@ -1,0 +1,13 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "captures", "fieldPath": "image", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "thumb", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "text", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "comment", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "teaches", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "teachesKeys", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "needsKeys", "indexes": [] },
+    { "collectionGroup": "captures", "fieldPath": "locked", "indexes": [] }
+  ]
+}

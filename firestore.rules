@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// alRato keeps everything on the device unless the student opts in to sync.
+// These rules are the last line of defense for that promise:
+//   - each student reaches only their own space;
+//   - a document marked private can never be stored;
+//   - a note removed from the cloud cannot be brought back by a stale device.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function noteKeys() {
+      return ['schema', 'id', 'createdAt', 'updatedAt', 'serverUpdatedAt', 'image', 'thumb',
+              'comment', 'text', 'textBy', 'legibility', 'kind', 'title', 'subject', 'topic',
+              'teaches', 'teachesKeys', 'needsKeys', 'status', 'revision', 'analyzedRevision',
+              'locked', 'isPrivate', 'isSample'];
+    }
+
+    function tombstoneOf(uid, id) {
+      return /databases/$(database)/documents/users/$(uid)/tombstones/$(id);
+    }
+
+    function noteOf(uid, id) {
+      return /databases/$(database)/documents/users/$(uid)/captures/$(id);
+    }
+
+    // Size limits match src/firebase/sync.ts. A unit test keeps the two in step.
+    function validNote(id) {
+      let note = request.resource.data;
+      return note.keys().hasAll(noteKeys()) && note.keys().hasOnly(noteKeys())
+        && note.isPrivate == false
+        && note.schema == 1
+        && note.id == id
+        && id.size() <= 64
+        && note.createdAt is int && note.createdAt >= 0
+        && note.updatedAt is int && note.updatedAt >= 0
+        // A device with a wrong clock must not win every future conflict.
+        && note.updatedAt <= request.time.toMillis() + 86400000
+        && note.serverUpdatedAt == request.time
+        && note.image is bytes && note.image.size() > 0 && note.image.size() <= 716800
+        && note.thumb is bytes && note.thumb.size() > 0 && note.thumb.size() <= 65536
+        && note.text is string && note.text.size() <= 20000
+        && note.comment is string && note.comment.size() <= 500
+        && note.title is string && note.title.size() <= 200
+        && note.subject is string && note.subject.size() <= 200
+        && note.topic is string && note.topic.size() <= 200
+        && note.textBy in ['none', 'ai', 'student']
+        && (note.legibility == null || note.legibility in ['high', 'medium', 'low'])
+        && note.kind in ['board', 'formula', 'exercise', 'question', 'other']
+        && note.status in ['queued', 'ready', 'needs_review']
+        && note.teaches is list && note.teaches.size() <= 12
+        && note.teachesKeys is list && note.teachesKeys.size() <= 12
+        && note.needsKeys is list && note.needsKeys.size() <= 12
+        && note.revision is int && note.revision >= 1
+        && note.analyzedRevision is int && note.analyzedRevision >= 0
+        && note.locked is map && note.locked.keys().hasOnly(['kind', 'title', 'subject', 'topic'])
+        && note.isSample is bool;
+    }
+
+    function validTombstone(uid, id) {
+      let mark = request.resource.data;
+      return mark.keys().hasAll(['deletedAt']) && mark.keys().hasOnly(['deletedAt', 'wiped'])
+        && mark.deletedAt == request.time
+        && (!('wiped' in mark) || mark.wiped == true)
+        && id.size() <= 64
+        // A tombstone always travels with the deletion of the note it describes.
+        && !existsAfter(noteOf(uid, id));
+    }
+
+    match /users/{uid}/captures/{id} {
+      allow read: if isOwner(uid);
+      // Sharing a removed note again must clear its tombstone in the same batch.
+      allow create: if isOwner(uid) && validNote(id) && !existsAfter(tombstoneOf(uid, id));
+      // Last writer wins, enforced here too. Resending the same version is harmless.
+      allow update: if isOwner(uid) && validNote(id)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt >= resource.data.updatedAt;
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/tombstones/{id} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validTombstone(uid, id);
+      allow delete: if isOwner(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

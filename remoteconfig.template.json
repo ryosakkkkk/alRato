@@ -1,0 +1,24 @@
+{
+  "parameters": {
+    "model_vision": {
+      "defaultValue": { "value": "gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen" },
+      "description": "Cloud models that read handwriting and math from a photo, comma-separated. The first is preferred, the rest are backups.",
+      "valueType": "STRING"
+    },
+    "model_text": {
+      "defaultValue": { "value": "gemini-3.5-flash-lite,gemini-3.8-flash" },
+      "description": "Cloud models for organizing notes and writing hints, comma-separated. The first is preferred, the rest are backups.",
+      "valueType": "STRING"
+    },
+    "long_input_chars": {
+      "defaultValue": { "value": "3500" },
+      "description": "Above this many characters, a text task prefers the cloud over the local model.",
+      "valueType": "NUMBER"
+    },
+    "daily_cloud_cap": {
+      "defaultValue": { "value": "80" },
+      "description": "Cloud calls per device per day. After that, the device or the queue takes over.",
+      "valueType": "NUMBER"
+    }
+  }
+}
