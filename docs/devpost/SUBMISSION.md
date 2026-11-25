@@ -138,7 +138,7 @@ https://github.com/ryosakkkkk/alRato
 **The five-minute path**
 
 1. Click **Try it with sample notes**. Two notes appear: *Weighted average* and *Ohm's law*.
-2. Click **Add the Bellman board**. This creates a new board photo that goes through the real AI pipeline.
+2. Click **Add the Bellman board**. On a browser without Gemini Nano, a consent sheet appears first: choose **I am 18+ and I agree** to use the cloud, or **Keep everything on this device**. This creates a new board photo that goes through the real AI pipeline.
 3. Wait for reading and organizing to finish. Each step leaves a receipt.
 4. Click **Give me a hint**, then **I need another hint**. If the model labeled the note as something other than an exercise, use the button shown, or set the type under **⋮ > Edit labels**.
 5. Look for **Connected to your note**, linking to *Weighted average*.
