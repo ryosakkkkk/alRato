@@ -159,9 +159,11 @@ flowchart TD
     E -- yes --> E1{"Paid mobile data?"}
     E1 -- yes --> R6["PREFER_ON_DEVICE<br/>save_data"]
     E1 -- no --> R7["PREFER_IN_CLOUD<br/>vision_quality"]
-    E -- no --> F{"Input over<br/>long_input_chars?"}
+    E -- no --> G{"Organizing a note?"}
+    G -- yes --> G1["PREFER_IN_CLOUD<br/>classify_quality"]
+    G -- no --> F{"Input over<br/>long_input_chars?"}
     F -- yes --> R8["PREFER_IN_CLOUD<br/>long_input"]
-    F -- no --> R9["PREFER_ON_DEVICE<br/>everyday_local"]
+    F -- no --> R9["PREFER_ON_DEVICE<br/>everyday_local (hints)"]
 ```
 
 The context passed to the router:

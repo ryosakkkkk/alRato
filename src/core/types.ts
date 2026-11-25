@@ -30,6 +30,7 @@ export type RouteReason =
   | 'user_quality'
   | 'save_data'
   | 'vision_quality'
+  | 'classify_quality'
   | 'long_input'
   | 'everyday_local'
   | 'device_failed_fallback';

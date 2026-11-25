@@ -11,7 +11,7 @@ Students photograph the board and often never open the photo again. alRato ("al 
 | **The problem** | A photo of the board feels like studying. Nothing happens until someone opens it again. |
 | **The value** | The photo turns into hints, a link to what you already know, and practice scheduled for later. |
 | **What is non-obvious** | The model extracts what each note *teaches* and what it *needs* as prior knowledge. On-device retrieval matches needs against teaches, so a Bellman equation exercise connects to the student's old weighted-average note, because probabilities act as weights, even though the two notes share almost no words. |
-| **Firebase AI Logic** | Each task picks its own SDK inference mode in [`src/ai/router.ts`](src/ai/router.ts). Private notes use `ONLY_ON_DEVICE`. Reading handwriting and math uses `PREFER_IN_CLOUD`. Short everyday tasks use `PREFER_ON_DEVICE`. With no route available, the note waits and resumes by itself. |
+| **Firebase AI Logic** | Each task picks its own SDK inference mode in [`src/ai/router.ts`](src/ai/router.ts). Private notes use `ONLY_ON_DEVICE`. Reading handwriting and math, and organizing a note, use `PREFER_IN_CLOUD`. Hints use `PREFER_ON_DEVICE`. With no route available, the note waits and resumes by itself. |
 | **Proof on every answer** | A receipt shows the real `response.inferenceSource` from the SDK, the bytes sent and the latency. |
 | **An SDK behavior we guard against** | In SDK 13.4, `ONLY_ON_DEVICE` in a browser without the Prompt API silently goes to the cloud. alRato refuses that call before the SDK runs: see `assertOnDevicePossible` in [`src/ai/engine.ts`](src/ai/engine.ts) and [`tests/engine.test.ts`](tests/engine.test.ts). |
 
@@ -88,8 +88,9 @@ What we use from the platform:
 | 7 | Student chose **Best quality** | `PREFER_IN_CLOUD` | The student's call | `user_quality` |
 | 8 | Reading a photo on paid mobile data | `PREFER_ON_DEVICE` | Saves the student's data | `save_data` |
 | 9 | Reading a photo on a normal connection | `PREFER_IN_CLOUD` | Handwriting and math need the stronger vision model | `vision_quality` |
-| 10 | Organizing or hinting, input over 3,500 characters | `PREFER_IN_CLOUD` | Long prompts go to the model with more room | `long_input` |
-| 11 | Organizing or hinting, normal input | `PREFER_ON_DEVICE` | Short and frequent: no network, no API cost | `everyday_local` |
+| 10 | Organizing a note, when the cloud is allowed | `PREFER_IN_CLOUD` | The kind and the links decide what the student sees next, so the stronger model does it | `classify_quality` |
+| 11 | Input over 3,500 characters | `PREFER_IN_CLOUD` | Long prompts go to the model with more room | `long_input` |
+| 12 | Hints, normal input | `PREFER_ON_DEVICE` | Short, frequent and interactive: no network, no API cost | `everyday_local` |
 
 If an on-device call fails or returns unusable output and the note is not private, the engine retries with `ONLY_IN_CLOUD` (`device_failed_fallback`). The SDK does not do this by itself once it has committed to the device.
 
@@ -358,7 +359,7 @@ Firebase, Gemini and Chrome are trademarks of Google LLC. alRato is an independe
 ## Known limitations
 
 - **No learning evaluation yet.** The design follows published research, but alRato has not been tested with students, so we make no claim about learning gains.
-- **The on-device path has run once, on a cloud machine.** Gemini Nano ran for real, on CPU only, in a free cloud virtual machine (4 cores, 16 GB RAM, Chrome 158 on Linux). The model took 152 seconds to download, and single runs took 4.3 s for a Spanish sentence, 3.2 s for JSON and 6.9 s for a short board image. The team's own computers and phones cannot run Gemini Nano, so there is no on-device measurement on a phone yet. <!-- MEASURE: on-device latency on a machine that meets the requirements -->
+- **The on-device path has run once, on a cloud machine.** Gemini Nano ran for real, on CPU only, in a free cloud virtual machine (4 cores, 16 GB RAM, Chrome 158 on Linux). The model took 152 seconds to download, and single runs took 4.3 s for a Spanish sentence, 3.2 s for JSON and 6.9 s for a short board image. On that run Gemini Nano filed the sample exercise as a formula in three of four tries, which is why organizing runs in the cloud when it is allowed. The student can change a note's type with one tap before hints start. The team's own computers and phones cannot run Gemini Nano, so there is no on-device measurement on a phone yet. <!-- MEASURE: on-device latency on a machine that meets the requirements -->
 - **The free cloud tier is shared.** Gemini's free tier counts requests per Google Cloud project, so every visitor of the hosted app shares it. On Nov 24, 2026, Google AI Studio showed 500 requests a day each for gemini-3.5-flash-lite and gemini-3.1-flash-lite, and 20 a day for gemini-3.8-flash. When a model's daily quota is gone, a device stops asking that model until midnight Pacific time, and it answers on the device or waits. A cap of 40 cloud calls per browser per day keeps one heavy user from using up the shared quota.
 - **Model quality is unmeasured.** We have no accuracy figures for reading handwriting and math on either route, or for how often teaches/needs extraction finds the right link. A connection appears only if the model names a matching prerequisite and agrees the note helps. <!-- MEASURE: transcription accuracy on real board photos, cloud vs Nano --> <!-- MEASURE: precision of "Connected to your note" on real notes -->
 - **On-device needs desktop Chrome with capable hardware.** Phones use the cloud route, and a private note on a phone waits until a device with a local model is available.

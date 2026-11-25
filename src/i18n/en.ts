@@ -146,6 +146,7 @@ export const en = {
   'reason.user_quality': 'You chose the strongest model, so the cloud went first.',
   'reason.save_data': 'You are on mobile data, so the photo was processed here to save it.',
   'reason.vision_quality': 'Handwriting and math need the strongest vision model.',
+  'reason.classify_quality': 'Organizing a note decides its kind and links, so the cloud model does it. Hints stay on this device.',
   'reason.long_input': 'This note is too long for the local model.',
   'reason.everyday_local': 'Short task: faster, free and private on this device.',
   'reason.device_failed_fallback': 'The local model could not finish, so the cloud took over.',

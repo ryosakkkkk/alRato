@@ -145,7 +145,7 @@ describe('hybrid routing through the real SDK', () => {
   it('gives Gemini Nano the system prompt and the response schema', async () => {
     const nanoPrompt = vi.fn(async () => NANO_JSON);
     const api = installNano(nanoPrompt);
-    await generate(request());
+    await generate(request({ task: 'help' }));
     const createOptions = api.create.mock.calls[0] as unknown as [{ initialPrompts: { role: string; content: { value: string }[] }[] }];
     expect(createOptions[0].initialPrompts[0].role).toBe('system');
     expect(createOptions[0].initialPrompts[0].content[0].value).toBe('SYSTEM PROMPT');
@@ -178,7 +178,7 @@ describe('hybrid routing through the real SDK', () => {
     installNano(async () => {
       throw new DOMException('model crashed', 'UnknownError');
     });
-    const { data, receipt } = await generate(request());
+    const { data, receipt } = await generate(request({ task: 'help' }));
     expect(data.text).toBe('from the cloud');
     expect(receipt).toMatchObject({ source: 'in_cloud', reason: 'device_failed_fallback' });
   });
@@ -247,7 +247,7 @@ describe('hybrid routing through the real SDK', () => {
 
   it('records usage so the student can see what stayed on the device', async () => {
     installNano(async () => NANO_JSON);
-    await generate(request());
+    await generate(request({ task: 'help' }));
     const [event] = await db.usage.toArray();
     expect(event.source).toBe('on_device');
     expect(event.bytesSent).toBe(0);

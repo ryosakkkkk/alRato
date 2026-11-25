@@ -57,7 +57,14 @@ function withDeadline<T>(work: Promise<T>, ms: number, failure: AiFailure): Prom
 function honestReason(planned: RouteReason, source: InferenceOrigin): RouteReason {
   if (source === 'on_device') {
     if (planned === 'no_local_model') return 'everyday_local';
-    if (planned === 'vision_quality' || planned === 'long_input' || planned === 'user_quality') return 'no_cloud';
+    if (
+      planned === 'vision_quality' ||
+      planned === 'classify_quality' ||
+      planned === 'long_input' ||
+      planned === 'user_quality'
+    ) {
+      return 'no_cloud';
+    }
   } else if (planned === 'everyday_local' || planned === 'save_data' || planned === 'user_local') {
     return 'no_local_model';
   }

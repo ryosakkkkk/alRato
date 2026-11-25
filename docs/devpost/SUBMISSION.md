@@ -65,7 +65,7 @@ The heart of alRato is **Firebase AI Logic hybrid inference, used per task** ins
 
 - **Private notes** use `ONLY_ON_DEVICE`. If the device has no model, they wait, even on a perfect connection.
 - **Reading handwriting and math** uses `PREFER_IN_CLOUD`, because quality matters most there and nobody is waiting for it. On paid mobile data it prefers the device.
-- **Short everyday tasks** (organizing, hints) use `PREFER_ON_DEVICE`: no network, no API cost.
+- **Organizing a note** uses `PREFER_IN_CLOUD`, because its kind and links decide what the student sees next. **Short hints** use `PREFER_ON_DEVICE`: no network, no API cost.
 - **No route available:** the note waits in a queue and resumes by itself.
 
 `src/ai/engine.ts` runs that decision through `getGenerativeModel` with `inCloudParams` and `onDeviceParams`. One JSON Schema configures both routes (`responseSchema` in the cloud, `responseConstraint` on Gemini Nano), so the app handles a single shape. App Check with reCAPTCHA Enterprise protects the cloud route, and Remote Config can swap models and tune thresholds without a rebuild.
@@ -77,6 +77,8 @@ We built alRato with **Claude Code**, an AI coding assistant, and we disclose th
 ## Challenges we ran into
 
 **A "device only" mode that was not.** The docs say `ONLY_ON_DEVICE` throws when no local model exists. Reading the SDK source, we found that in version 13.4, a browser without the Prompt API gets no Chrome adapter, and a request with no adapter goes straight to the cloud. On any phone, a private note would have left the device with no error. We added a gate that refuses the call before the SDK runs, a second check on `inferenceSource`, and a test that pins the behavior against the real SDK.
+
+**A small model got the kind wrong.** In a real on-device run, Gemini Nano filed a worked exercise as a formula in three of four tries. Organizing now runs in the cloud when it is allowed, the instructions say what counts as an exercise, and the student can change the type with one tap before hints start.
 
 **Failure is not the same as unavailability.** The SDK falls back when a model is missing, but not when an on-device call fails or returns weak output. We handle that ourselves, and never for private notes.
 

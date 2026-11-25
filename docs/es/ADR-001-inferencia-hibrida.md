@@ -35,7 +35,7 @@ Las fuerzas que definieron esta decisión fueron:
 | Recuperación (lo que necesita contra lo que enseña) | Cliente, siempre | Lee toda la biblioteca, así que nunca debería salir del dispositivo |
 | Programación de repasos, validación, presentación | Cliente, siempre | No necesita modelo |
 | **Leer una foto** | `PREFER_IN_CLOUD`, o `PREFER_ON_DEVICE` con datos móviles | Es la tarea más difícil y nadie la está esperando |
-| **Organizar un apunte** | `PREFER_ON_DEVICE` | Corta, estructurada y se hace con cada apunte |
+| **Organizar un apunte** | `PREFER_IN_CLOUD` | Su tipo y sus conexiones deciden lo que el estudiante ve después. Sin nube, se hace en el dispositivo |
 | **Pistas** | `PREFER_ON_DEVICE` | Interactivas y frecuentes |
 | **Entradas largas** | `PREFER_IN_CLOUD` | Más de 3500 caracteres por defecto |
 | **Apuntes privados, cualquier tarea** | `ONLY_ON_DEVICE`, o esperar | Es una instrucción explícita del estudiante |
@@ -54,7 +54,7 @@ Tres decisiones de apoyo hacen que esto sea seguro:
 | Tarea | ¿Alguien espera? | Carga | Exigencia de calidad | Frecuencia | Por defecto |
 |---|---|---|---|---|---|
 | Leer | No, corre después de clase | Grande (foto) | La más alta | Una vez por apunte | Primero la nube |
-| Organizar | Rara vez | Pequeña | Moderada | Una vez por apunte | Primero el dispositivo |
+| Organizar | Una vez por apunte | Pequeña | Alta | Una vez por apunte | Primero la nube |
 | Pista | Sí | Pequeña | Moderada | Varias por apunte | Primero el dispositivo |
 
 ### Latencia
@@ -70,7 +70,7 @@ Todavía no hemos medido la latencia en el dispositivo ni en la nube, así que e
 Hay dos presupuestos, y el del estudiante es el que más importa.
 
 - **Los datos móviles del estudiante.** Las fotos son la carga más pesada. Con una conexión medida y un modelo local disponible, el enrutador lee la foto en el dispositivo (`save_data`).
-- **La cuota de la API.** Organizar y dar pistas son las llamadas más frecuentes. Ejecutarlas en el dispositivo no consume cuota y la reserva para la tarea que más gana con la nube. Un tope diario por navegador (`daily_cloud_cap`, 40 por defecto) y una revisión de cuota por modelo (un modelo que agotó su cupo diario se omite hasta la medianoche del Pacífico) evitan que un bucle o un error agote la capa gratuita compartida.
+- **La cuota de la API.** Las pistas son las llamadas más frecuentes, así que se ejecutan en el dispositivo sin consumir cuota. Organizar se hace una vez por apunte y usa la nube, donde la calidad importa más. Un tope diario por navegador (`daily_cloud_cap`, 40 por defecto) y una revisión de cuota por modelo (un modelo que agotó su cupo diario se omite hasta la medianoche del Pacífico) evitan que un bucle o un error agote la capa gratuita compartida.
 - **El costo para el dispositivo.** El modelo local es una descarga única que requiere una conexión sin límite y bastante disco libre. Nunca la iniciamos sin un clic del estudiante.
 
 <!-- MEASURE: bytes típicos por apunte en la ruta de nube, tomados de comprobantes reales -->

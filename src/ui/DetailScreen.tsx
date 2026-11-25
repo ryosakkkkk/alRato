@@ -316,8 +316,8 @@ function HelpPanel({ capture }: { capture: Capture }) {
           {busy ? (device.text === 'ready' ? t('detail.thinkingDevice') : t('detail.thinking')) : askLabel}
         </button>
       )}
-      {(capture.kind === 'board' || capture.kind === 'other') && aids.length === 0 && (
-        // The model may file an exercise on the board as a plain board. One tap fixes it.
+      {(capture.kind === 'board' || capture.kind === 'other' || capture.kind === 'formula') && aids.length === 0 && (
+        // The model may file a problem as a board, or as a formula. One tap fixes it before hints start.
         <button className="text-link center" onClick={() => editLabels(capture.id, { kind: 'exercise' })}>
           {t('detail.asExercise')}
         </button>

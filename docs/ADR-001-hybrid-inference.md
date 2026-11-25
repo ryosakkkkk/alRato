@@ -33,7 +33,7 @@ The forces that shaped this decision:
 | Retrieval (needs against teaches) | Client, always | It reads the whole library, so it should never leave the device |
 | Scheduling, validation, rendering | Client, always | No model needed |
 | **Reading a photo** | `PREFER_IN_CLOUD`, or `PREFER_ON_DEVICE` on paid data | The hardest task, and nobody is waiting for it |
-| **Organizing a note** | `PREFER_ON_DEVICE` | Short, structured and done for every note |
+| **Organizing a note** | `PREFER_IN_CLOUD` | Its kind and links decide what the student sees next. On a device without the cloud, it runs on the device |
 | **Hints** | `PREFER_ON_DEVICE` | Interactive and frequent |
 | **Long inputs** | `PREFER_IN_CLOUD` | Over 3,500 characters by default |
 | **Private notes, every task** | `ONLY_ON_DEVICE`, or wait | The student's explicit instruction |
@@ -52,7 +52,7 @@ Three supporting decisions make this safe:
 | Task | Is someone waiting? | Payload | Quality demand | How often | Default |
 |---|---|---|---|---|---|
 | Read | No, it runs after class | Large (photo) | Highest | Once per note | Cloud first |
-| Organize | Rarely | Small | Moderate | Once per note | Device first |
+| Organize | Once per note | Small | High | Once per note | Cloud first |
 | Hint | Yes | Small | Moderate | Several per note | Device first |
 
 ### Latency
@@ -68,7 +68,7 @@ We have not measured on-device or cloud latency yet, so this reasoning is archit
 There are two budgets, and the student's is the one that matters more.
 
 - **The student's mobile data.** Photos are the largest payload. On a metered connection with a local model available, the router reads the photo on the device (`save_data`).
-- **API quota.** Organizing and hints are the most frequent calls. Running them on-device costs no quota and saves it for the task that benefits most from the cloud. A per-browser daily cap (`daily_cloud_cap`, default 40) and a per-model quota check (a model that has used its daily quota is skipped until midnight Pacific time) keep a loop or a bug from draining the shared free tier.
+- **API quota.** Hints are the most frequent calls, so they run on the device at no quota cost. Organizing runs once per note and uses the cloud, where its quality matters most. A per-browser daily cap (`daily_cloud_cap`, default 40) and a per-model quota check (a model that has used its daily quota is skipped until midnight Pacific time) keep a loop or a bug from draining the shared free tier.
 - **The device's cost.** The local model is a one-time download that needs an unmetered connection and a lot of free disk. We never trigger it without a click.
 
 <!-- MEASURE: typical bytes per note on the cloud route, from real receipts -->

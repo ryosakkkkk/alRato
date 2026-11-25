@@ -148,6 +148,7 @@ export const es: Record<MessageKey, string> = {
   'reason.user_quality': 'Elegiste el modelo más potente, así que la nube fue primero.',
   'reason.save_data': 'Estás con datos móviles, así que la foto se procesó aquí para ahorrarlos.',
   'reason.vision_quality': 'La letra a mano y las fórmulas necesitan el mejor modelo de visión.',
+  'reason.classify_quality': 'Organizar el apunte define su tipo y sus conexiones, así que lo hace el modelo de la nube. Las pistas se quedan en este dispositivo.',
   'reason.long_input': 'Este apunte es demasiado largo para el modelo local.',
   'reason.everyday_local': 'Tarea corta: más rápida, gratis y privada en este dispositivo.',
   'reason.device_failed_fallback': 'El modelo local no pudo terminar, así que la nube tomó el relevo.',

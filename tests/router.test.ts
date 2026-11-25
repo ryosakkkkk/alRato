@@ -63,6 +63,20 @@ describe('decideRoute', () => {
     });
   });
 
+  it('organizes a note in the cloud, because the kind and the links depend on it', () => {
+    expect(decideRoute({ ...base, task: 'analyze' })).toMatchObject({
+      mode: InferenceMode.PREFER_IN_CLOUD,
+      reason: 'classify_quality',
+    });
+  });
+
+  it('keeps hints on the device even when the cloud is available', () => {
+    expect(decideRoute({ ...base, task: 'help' })).toMatchObject({
+      mode: InferenceMode.PREFER_ON_DEVICE,
+      reason: 'everyday_local',
+    });
+  });
+
   it('protects paid mobile data by reading photos locally', () => {
     expect(decideRoute({ ...base, task: 'read', metered: true })).toMatchObject({
       mode: InferenceMode.PREFER_ON_DEVICE,

@@ -34,7 +34,8 @@ const wait = (reason: WaitReason): RouteDecision => ({ kind: 'wait', reason });
  *  - The cloud needs the student's consent. Without it, the note runs locally or waits.
  *  - No usable cloud: run on-device, or wait in the queue.
  *  - Reading a photo favors the cloud because handwriting and math need the best vision.
- *  - Short, frequent tasks (organize, hint) favor the device: instant, free, private.
+ *  - Organizing a note (kind, topic, prerequisites) favors the cloud: the student's next steps depend on it.
+ *  - Short, frequent hints favor the device: instant, free, private.
  *  - On paid mobile data the device is preferred even for photos.
  */
 export function decideRoute(c: RouteContext): RouteDecision {
@@ -73,6 +74,10 @@ export function decideRoute(c: RouteContext): RouteDecision {
     return c.metered
       ? run(InferenceMode.PREFER_ON_DEVICE, 'save_data')
       : run(InferenceMode.PREFER_IN_CLOUD, 'vision_quality');
+  }
+  if (c.task === 'analyze') {
+    // Organizing decides a note's kind and its links, so it gets the stronger model.
+    return run(InferenceMode.PREFER_IN_CLOUD, 'classify_quality');
   }
   if (c.inputChars > c.longInputChars) return run(InferenceMode.PREFER_IN_CLOUD, 'long_input');
   return run(InferenceMode.PREFER_ON_DEVICE, 'everyday_local');
