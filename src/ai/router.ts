@@ -14,6 +14,8 @@ export interface RouteContext {
   /** Nothing goes to the cloud unless the student said yes. */
   cloudConsent: CloudConsent;
   cloudCapReached: boolean;
+  /** App Check refused this browser recently, so cloud AI is paused here. */
+  cloudPaused: boolean;
   preference: RoutePreference;
   inputChars: number;
   longInputChars: number;
@@ -46,7 +48,7 @@ export function decideRoute(c: RouteContext): RouteDecision {
   }
 
   const consented = c.cloudConsent === 'granted';
-  const cloudUsable = c.online && c.cloudConfigured && consented && !c.cloudCapReached;
+  const cloudUsable = c.online && c.cloudConfigured && consented && !c.cloudCapReached && !c.cloudPaused;
   if (!cloudUsable) {
     if (deviceReady) {
       const reason: RouteReason = !c.online
@@ -62,6 +64,7 @@ export function decideRoute(c: RouteContext): RouteDecision {
     if (c.cloudConfigured && !consented) {
       return wait(c.cloudConsent === 'declined' ? 'cloud_declined' : 'needs_consent');
     }
+    if (c.cloudPaused) return wait('app_check_paused');
     return wait(c.cloudCapReached ? 'cloud_cap_no_model' : 'cloud_unavailable');
   }
 

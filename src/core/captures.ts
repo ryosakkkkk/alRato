@@ -1,5 +1,6 @@
 import { db, kvGet, kvSet, newId } from './db';
 import { prepareImage } from './image';
+import { resumeCloudAfterAppCheck } from '../ai/appcheck';
 import { kickQueue } from './queue';
 import type { Capture, Card, NoteKind, StudyAid } from './types';
 import { BOX_INTERVAL_DAYS, schedule } from './srs';
@@ -144,6 +145,8 @@ export async function setPrivate(id: string, isPrivate: boolean): Promise<void> 
 }
 
 export async function retryCapture(id: string): Promise<void> {
+  // The student asked for the cloud again, so an App Check pause from an earlier refusal ends here.
+  resumeCloudAfterAppCheck();
   await db.captures.update(id, {
     status: 'queued',
     attempts: 0,

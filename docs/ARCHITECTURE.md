@@ -238,7 +238,7 @@ stateDiagram-v2
 |---|---|
 | No route (`WaitForRoute`) | Stays `queued` with a `waitReason` the UI explains. Not counted as an attempt |
 | Transient error (network, rate limit, server) | Retries with exponential backoff from 4 seconds, up to 5 attempts |
-| Permanent error (config, App Check, safety, invalid output) | `failed`, with a **Try again** button |
+| Permanent error (config, App Check, safety, invalid output) | `failed`, with a **Try again** button. An App Check refusal also pauses cloud AI in that browser for a day ([`appcheck.ts`](../src/ai/appcheck.ts)); new work then uses this computer's model or waits |
 | Tab closed mid-work | `recoverInterrupted()` puts the note back in the queue at the next start |
 | Student edited the note mid-work | The answer for the old revision is dropped |
 

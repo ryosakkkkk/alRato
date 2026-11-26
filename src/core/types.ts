@@ -14,6 +14,8 @@ export type WaitReason =
   | 'offline_no_model'
   | 'cloud_unavailable'
   | 'cloud_cap_no_model'
+  /** App Check refused this browser, so cloud AI waits for the pause to end. */
+  | 'app_check_paused'
   /** The cloud is the only route and the student has not answered the consent sheet yet. */
   | 'needs_consent'
   /** The cloud is the only route and the student chose to keep everything on this device. */

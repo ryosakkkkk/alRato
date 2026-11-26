@@ -18,6 +18,7 @@ import { remote } from '../firebase/remoteConfig';
 import { expectedIO, hasPromptApi, isMeteredConnection, refreshDevice, reportDownloadProgress } from './device';
 import { AlRatoAiError, classifyError, WaitForRoute, type AiFailure } from './errors';
 import { allModelsExhausted, isModelExhausted, markModelExhausted } from './quota';
+import { isAppCheckPaused, pauseCloudForAppCheck } from './appcheck';
 import { decideRoute } from './router';
 import { parseJson } from './validate';
 
@@ -301,6 +302,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
     cloudConfigured: isCloudConfigured,
     cloudConsent: getCloudConsent(),
     cloudCapReached: (await cloudCallsToday()) >= remote().daily_cloud_cap || allModelsExhausted(chain),
+    cloudPaused: isAppCheckPaused(),
     preference: getPreference(),
     inputChars: req.system.length + req.prompt.length,
     longInputChars: remote().long_input_chars,
@@ -332,6 +334,15 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
       mode = InferenceMode.ONLY_IN_CLOUD;
       reason = 'device_failed_fallback';
       result = await attemptWithBackups(req, mode, parts, lang);
+    } else if (failure.failure === 'app_check') {
+      // App Check refused this browser. Pause the cloud here, and finish this note on the device when it can.
+      pauseCloudForAppCheck();
+      if (mode === InferenceMode.ONLY_ON_DEVICE || !deviceReady) throw failure;
+      mode = InferenceMode.ONLY_ON_DEVICE;
+      reason = 'no_cloud';
+      result = await attempt(req, mode, parts, lang, chain[0] ?? '').catch((e) => {
+        throw classifyError(e);
+      });
     } else if (failure.transient && mode === InferenceMode.PREFER_IN_CLOUD && deviceReady) {
       // Every cloud model is down or slow, and the SDK only rescues some of those errors.
       mode = InferenceMode.ONLY_ON_DEVICE;

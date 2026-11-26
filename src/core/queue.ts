@@ -1,3 +1,4 @@
+import { appCheckPausedUntil } from '../ai/appcheck';
 import { generate } from '../ai/engine';
 import { AlRatoAiError, classifyError, WaitForRoute } from '../ai/errors';
 import { analyzePrompt, analyzeSystem, readPrompt, readSystem } from '../ai/prompts';
@@ -65,6 +66,11 @@ async function armRetryTimer(): Promise<void> {
   if (future.length > 0) delays.push(Math.min(...future.map((c) => c.nextAttemptAt)) - Date.now());
   // A note waiting for the daily allowance wakes up by itself, even while the tab stays open.
   if (queued.some((c) => c.waitReason === 'cloud_cap_no_model')) delays.push(QUOTA_RECHECK_MS);
+  // A pause after an App Check refusal ends at a known time, so the queue wakes exactly then.
+  if (queued.some((c) => c.waitReason === 'app_check_paused')) {
+    const until = appCheckPausedUntil();
+    if (until) delays.push(Math.max(60_000, until - Date.now()));
+  }
   if (delays.length === 0) return;
   retryTimer = setTimeout(kickQueue, Math.max(250, Math.min(...delays)));
 }

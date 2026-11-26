@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assertOnDevicePossible, generate, resetModelCache, type GenerateRequest } from '../src/ai/engine';
 import { WaitForRoute } from '../src/ai/errors';
 import { isModelExhausted } from '../src/ai/quota';
+import { isAppCheckPaused, pauseCloudForAppCheck } from '../src/ai/appcheck';
 import { READ_SCHEMA } from '../src/ai/schemas';
 import { validateRead, type ReadOutput } from '../src/ai/validate';
 import { setCloudConsent } from '../src/core/consent';
@@ -83,6 +84,35 @@ describe('a note that turns private while its cloud request is prepared', () => 
     const result = await generate(request({ stillPublic: async () => true }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.data.text).toBe('from the cloud');
+  });
+});
+
+describe('an App Check refusal', () => {
+  it('pauses the cloud and finishes on the device when this computer can', async () => {
+    installNano(async () => NANO_JSON);
+    fetchMock.mockImplementation(
+      async () => new Response('{"error":{"code":403,"message":"App Check token is invalid"}}', { status: 403 }),
+    );
+    const { data, receipt } = await generate(request());
+    expect(data.text).toBe('from nano');
+    expect(receipt.source).toBe('on_device');
+    expect(receipt.reason).toBe('no_cloud');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes no cloud call during the pause, and waits when there is no local model', async () => {
+    pauseCloudForAppCheck();
+    await expect(generate(request())).rejects.toMatchObject({ reason: 'app_check_paused' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fails the note and pauses the cloud when this computer cannot finish it', async () => {
+    fetchMock.mockImplementation(
+      async () => new Response('{"error":{"code":403,"message":"App Check token is invalid"}}', { status: 403 }),
+    );
+    await expect(generate(request())).rejects.toMatchObject({ failure: 'app_check' });
+    expect(isAppCheckPaused()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

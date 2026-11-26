@@ -11,6 +11,7 @@ const base: RouteContext = {
   cloudConfigured: true,
   cloudConsent: 'granted',
   cloudCapReached: false,
+  cloudPaused: false,
   preference: 'balanced',
   inputChars: 800,
   longInputChars: 3500,
