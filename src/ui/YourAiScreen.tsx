@@ -4,7 +4,7 @@ import { setupDeviceModel } from '../ai/engine';
 import { SYNC_ENABLED_KEY, SYNC_OUTBOX_KEY, type CloudDelete } from '../core/captures';
 import { getCloudConsent, openConsentPrompt, setCloudConsent, subscribeConsent } from '../core/consent';
 import { db, kvGet } from '../core/db';
-import { getPreference, setPreference } from '../core/settings';
+import { getPreference, getTheme, setPreference, setTheme, type Theme } from '../core/settings';
 import type { Lang, RoutePreference } from '../core/types';
 import { isCloudConfigured, isFirebaseConfigured } from '../firebase/app';
 import { authState, preloadAuth, signIn, signOutAccount, subscribeAuth, type SignInResult } from '../firebase/auth';
@@ -247,6 +247,7 @@ export function YourAiScreen() {
   const { t, lang, setLang } = useI18n();
   const device = useDevice();
   const [preference, setPref] = useState<RoutePreference>(getPreference);
+  const [theme, setThemeState] = useState<Theme>(getTheme);
   const [downloadFailed, setDownloadFailed] = useState(false);
   const usage = useLiveQuery(() => db.usage.toArray(), []);
 
@@ -362,6 +363,26 @@ export function YourAiScreen() {
           {(['en', 'es'] as Lang[]).map((code) => (
             <button key={code} role="radio" aria-checked={lang === code} className={lang === code ? 'active' : ''} onClick={() => setLang(code)}>
               {code === 'en' ? 'English' : 'Español'}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card stack-s">
+        <h2>{t('ai.themeTitle')}</h2>
+        <div className="segmented" role="radiogroup" aria-label={t('ai.themeTitle')}>
+          {(['dark', 'light'] as Theme[]).map((option) => (
+            <button
+              key={option}
+              role="radio"
+              aria-checked={theme === option}
+              className={theme === option ? 'active' : ''}
+              onClick={() => {
+                setTheme(option);
+                setThemeState(option);
+              }}
+            >
+              {option === 'dark' ? t('ai.themeDark') : t('ai.themeLight')}
             </button>
           ))}
         </div>

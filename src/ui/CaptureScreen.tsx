@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { addCapture } from '../core/captures';
 import { useI18n } from '../i18n';
-import { TopBar } from './common';
+import { Scanner, TopBar } from './common';
 import { Icon } from './Icon';
 import { go } from './router';
 
@@ -86,6 +86,7 @@ export function CaptureScreen() {
 
       <div className="viewfinder">
         <video ref={videoRef} playsInline muted className={camera === 'live' ? '' : 'hidden'} />
+        {camera === 'live' && <Scanner className="scan-camera" />}
         {notice && (
           <div className="viewfinder-note">
             <Icon name={camera === 'starting' ? 'camera' : 'image'} size={34} />

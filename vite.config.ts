@@ -15,8 +15,8 @@ export default defineConfig({
         short_name: 'alRato',
         description:
           'Photograph the board in class. alRato turns it into hints, connections to your own notes and spaced practice, on your device when it can and in the cloud when it must.',
-        theme_color: '#2f4f3a',
-        background_color: '#f6eedf',
+        theme_color: '#07070c',
+        background_color: '#07070c',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',

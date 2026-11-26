@@ -34,6 +34,8 @@ export const HELP_SCHEMA = {
     connection: { type: 'string' },
     practice_q: { type: 'string' },
     practice_a: { type: 'string' },
+    // Optional: the function to draw under a full solution, in plain notation with x.
+    plot: { type: 'string' },
   },
   required: ['help', 'source_id', 'connection', 'practice_q', 'practice_a'],
 } as const;

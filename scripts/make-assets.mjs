@@ -29,7 +29,9 @@ const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 const SAFE_ZONE_RATIO = 0.4;
 
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
-const LEAF = read('public/favicon.svg').match(/<path d="([^"]+)"/)[1];
+// The leaf of the Devpost thumbnail's mock-up. Frozen here: the app icons no longer come from
+// public/favicon.svg (see scripts/make-icons.mjs), so this script must not read that file.
+const LEAF = 'M45 15C29 15 18 24 18 38c0 3 .6 6 1.7 8.4C24 33 32 26 41 23 33 29 26 37 23 49c3 1.400 6 2 9 2 13 0 18-16 13-36Z';
 
 // The phone mock-up reuses the app's real icons and interface strings.
 const iconSource = read('src/ui/Icon.tsx');
@@ -621,13 +623,8 @@ async function writePreviews(cdp) {
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-const OUTPUTS = [
-  { file: 'public/icons/icon-192.png', size: 192, transparent: true, html: () => logoIcon(192) },
-  { file: 'public/icons/icon-512.png', size: 512, transparent: true, html: () => logoIcon(512) },
-  { file: 'public/icons/icon-maskable-512.png', size: 512, safeZone: true, html: () => fullBleedIcon(512, 0.365) },
-  // iOS paints transparent pixels black and rounds the corners itself, so this one is full bleed too.
-  { file: 'public/icons/apple-touch-icon.png', size: 180, html: () => fullBleedIcon(180, 0.34) },
-];
+// The PWA icons moved to scripts/make-icons.mjs. Nothing is written here except the thumbnail below.
+const OUTPUTS = [];
 
 async function main() {
   const { child, url } = await launchChrome();

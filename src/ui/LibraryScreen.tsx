@@ -2,21 +2,29 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { db } from '../core/db';
 import { searchNotes } from '../core/retrieval';
-import type { Capture } from '../core/types';
+import type { Capture, NoteKind } from '../core/types';
 import { useI18n } from '../i18n';
 import { Empty, NoteRow } from './common';
 import { Icon } from './Icon';
 import { go } from './router';
 
+const KIND_ORDER: NoteKind[] = ['exercise', 'formula', 'board', 'question', 'other'];
+
 export function LibraryScreen() {
   const { t, lang } = useI18n();
   const [query, setQuery] = useState('');
+  const [kind, setKind] = useState<NoteKind | 'all'>('all');
   const captures = useLiveQuery(() => db.captures.orderBy('createdAt').reverse().toArray(), []);
+
+  // Only the kinds the student actually has become filters.
+  const kinds = useMemo(() => KIND_ORDER.filter((k) => (captures ?? []).some((c) => c.kind === k)), [captures]);
+  const activeKind = kind !== 'all' && kinds.includes(kind) ? kind : 'all';
 
   const groups = useMemo(() => {
     const unsorted = t('library.unsorted');
     const bySubject = new Map<string, Capture[]>();
     for (const capture of searchNotes(query, captures ?? [])) {
+      if (activeKind !== 'all' && capture.kind !== activeKind) continue;
       const subject = capture.subject || unsorted;
       bySubject.set(subject, [...(bySubject.get(subject) ?? []), capture]);
     }
@@ -25,7 +33,7 @@ export function LibraryScreen() {
       if (b === unsorted) return -1;
       return a.localeCompare(b, lang);
     });
-  }, [captures, query, lang, t]);
+  }, [captures, query, activeKind, lang, t]);
 
   if (!captures) return <div className="skeleton" />;
 
@@ -44,6 +52,22 @@ export function LibraryScreen() {
         />
       </label>
 
+      {kinds.length > 1 && (
+        <div className="filters" role="radiogroup" aria-label={t('library.filter')}>
+          {(['all', ...kinds] as const).map((k) => (
+            <button
+              key={k}
+              role="radio"
+              aria-checked={activeKind === k}
+              className={activeKind === k ? 'filter active' : 'filter'}
+              onClick={() => setKind(k)}
+            >
+              {k === 'all' ? t('library.all') : t(`filter.${k}`)}
+            </button>
+          ))}
+        </div>
+      )}
+
       {captures.length === 0 && (
         <Empty icon="folder" title={t('library.empty')}>
           <button className="btn btn-primary" onClick={() => go('/capture')}>
@@ -55,7 +79,13 @@ export function LibraryScreen() {
 
       {captures.length > 0 && groups.length === 0 && (
         <Empty icon="search" title={t('library.noResults', { q: query })}>
-          <button className="btn btn-ghost" onClick={() => setQuery('')}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setQuery('');
+              setKind('all');
+            }}
+          >
             {t('library.clear')}
           </button>
         </Empty>
@@ -67,9 +97,11 @@ export function LibraryScreen() {
             <Icon name="folder" size={20} />
             {subject}
           </h2>
-          {notes.map((note) => (
-            <NoteRow key={note.id} capture={note} />
-          ))}
+          <div className="note-grid">
+            {notes.map((note) => (
+              <NoteRow key={note.id} capture={note} />
+            ))}
+          </div>
         </section>
       ))}
     </div>

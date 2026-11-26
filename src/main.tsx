@@ -1,4 +1,5 @@
 import '@fontsource-variable/fraunces';
+import '@fontsource-variable/fraunces/wght-italic.css';
 import '@fontsource-variable/inter';
 import '@fontsource/caveat/600.css';
 import './styles.css';
@@ -9,10 +10,13 @@ import { registerSW } from 'virtual:pwa-register';
 import { deviceStatus, refreshDevice, subscribeDevice } from './ai/device';
 import { App } from './App';
 import { kickQueue, recoverInterrupted } from './core/queue';
-import { getLang } from './core/settings';
+import { applyTheme, getLang } from './core/settings';
 import { hasAccountSession } from './firebase/auth';
 import { loadRemoteConfig } from './firebase/remoteConfig';
 import { I18nProvider } from './i18n';
+
+// Before the first render, so the chosen theme is there from the first frame.
+applyTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

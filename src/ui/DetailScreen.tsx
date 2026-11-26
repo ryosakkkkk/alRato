@@ -8,11 +8,12 @@ import { db } from '../core/db';
 import type { Capture, NoteKind, StudyAid, WaitReason } from '../core/types';
 import { useI18n } from '../i18n';
 import type { MessageKey } from '../i18n/en';
-import { Empty, ReceiptLine, Thumb, TopBar } from './common';
+import { Empty, ReceiptLine, Scanner, Thumb, TopBar } from './common';
 import { useBlobUrl, useDevice } from './hooks';
 import { Icon, type IconName } from './Icon';
 import { MathText } from './MathText';
 import { go, goBack } from './router';
+import { SolutionSteps } from './SolutionSteps';
 import { Sheet } from './Sheet';
 
 const KINDS: NoteKind[] = ['board', 'formula', 'exercise', 'question', 'other'];
@@ -217,10 +218,12 @@ function AidCard({ aid, isLadder, showLink }: { aid: StudyAid; isLadder: boolean
   return (
     <article className="aid">
       <h3>
-        <Icon name="spark" size={18} />
+        <span className="tile">
+          <Icon name="spark" size={16} />
+        </span>
         {isLadder ? t(`ladder.${aid.level}` as MessageKey) : t(`action.${aid.action}`)}
       </h3>
-      <MathText text={aid.body} />
+      {isLadder && aid.level === MAX_LEVEL ? <SolutionSteps text={aid.body} plot={aid.plot} /> : <MathText text={aid.body} />}
       {showLink && aid.link && <LinkCard link={aid.link} />}
       <ReceiptLine receipt={aid.receipt} />
     </article>
@@ -377,6 +380,7 @@ export function DetailScreen({ id }: { id: string }) {
         <div className="detail-photo">
           <button className="photo" onClick={() => setViewer(true)}>
             {photo && <img src={photo} alt={t('detail.photoAlt', { title })} />}
+            {(capture.status === 'queued' || capture.status === 'processing') && <Scanner />}
           </button>
           <div className="chips">
             {capture.analyzedRevision > 0 && <span className="chip chip-kind">{t(`kind.${capture.kind}`)}</span>}

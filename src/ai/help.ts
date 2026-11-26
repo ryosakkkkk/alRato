@@ -96,6 +96,8 @@ async function runHelp(captureId: string, level: number): Promise<StudyAid> {
     body: data.body,
     link: data.link,
     practice: data.practice,
+    // A graph shows where the answers are, so only the full solution may draw one.
+    plot: level >= MAX_LEVEL ? data.plot : null,
     receipt,
     promptVersion: PROMPT_VERSION,
     createdAt: Date.now(),

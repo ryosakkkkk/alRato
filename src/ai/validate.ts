@@ -1,3 +1,4 @@
+import { compileFunction, MAX_PLOT_CHARS } from '../core/plot';
 import type { NoteKind } from '../core/types';
 import { AlRatoAiError } from './errors';
 
@@ -21,6 +22,8 @@ export interface HelpOutput {
   body: string;
   link: { captureId: string; why: string } | null;
   practice: { question: string; answer: string } | null;
+  /** A function of x to draw under the solution, only when it can be read safely. */
+  plot: string | null;
 }
 
 const invalid = (detail: string) => new AlRatoAiError('invalid_output', detail);
@@ -89,5 +92,8 @@ export function validateHelp(raw: Record<string, unknown>, candidateIds: readonl
   const answer = str(raw.practice_a, 320);
   const practice = question && answer ? { question, answer } : null;
 
-  return { body, link, practice };
+  const plotSource = str(raw.plot, MAX_PLOT_CHARS);
+  const plot = plotSource && compileFunction(plotSource) ? plotSource : null;
+
+  return { body, link, practice, plot };
 }

@@ -1353,14 +1353,14 @@ async function journeyB(s) {
   await nanoTab.shot('02-receipt-device');
   await nanoTab.close();
 
-  // The designed hybrid: photo read in the cloud, everyday help on the device.
+  // The designed hybrid: the photo is read and the note organized in the cloud, while everyday help stays on the device.
   const hybrid = await s.tab({ nano: 'ready', consent: 'granted' });
   await readyBellman(s, hybrid);
   await hybrid.tap(hybrid.t('action.hint'));
   await hybrid.until('the hint', async () => (await hybrid.count('.aid')) === 1);
   s.expect(
-    hybrid.cloud.count() === 1 && hybrid.cloud.count('read') === 1,
-    'with consent, only the photo goes to the cloud',
+    hybrid.cloud.count() === 2 && hybrid.cloud.count('read') === 1 && hybrid.cloud.count('analyze') === 1 && hybrid.cloud.count('help') === 0,
+    'with consent, the photo and its organizing go to the cloud, and the hint stays on the device',
     JSON.stringify(hybrid.cloud.calls.map((call) => call.task)),
   );
   await s.step('the receipts show both routes', async () => {

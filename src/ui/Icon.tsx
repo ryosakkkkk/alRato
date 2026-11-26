@@ -24,6 +24,7 @@ const PATHS = {
   download: 'M12 4v11M7.500 11 12 15.500 16.500 11M5 19.500h14',
   trash: 'M4.500 7h15M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13',
   x: 'M6 6l12 12M18 6 6 18',
+  replay: 'M4.500 12a7.500 7.500 0 1 0 2.200-5.300M4.500 4.500v4h4',
 } as const;
 
 export type IconName = keyof typeof PATHS;

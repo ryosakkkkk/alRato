@@ -11,7 +11,19 @@ function Math({ source, display }: { source: string; display: boolean }) {
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function inline(text: string): ReactNode[] {
+/** With `words`, plain text is split into one span per word, so the board can write it word by word. */
+function plain(text: string, key: number, words: boolean): ReactNode {
+  if (!words) return text;
+  return text.split(/(\s+)/).map((part, n) =>
+    /^\s*$/.test(part) ? part : (
+      <span key={`${key}-${n}`} className="w">
+        {part}
+      </span>
+    ),
+  );
+}
+
+function inline(text: string, words: boolean): ReactNode[] {
   return text.split(INLINE).map((piece, i) => {
     if (piece.startsWith('$$') && piece.endsWith('$$') && piece.length > 4) {
       return <Math key={i} source={piece.slice(2, -2)} display />;
@@ -20,9 +32,13 @@ function inline(text: string): ReactNode[] {
       return <Math key={i} source={piece.slice(1, -1)} display={false} />;
     }
     if (piece.startsWith('**') && piece.endsWith('**') && piece.length > 4) {
-      return <strong key={i}>{piece.slice(2, -2)}</strong>;
+      return (
+        <strong key={i} className={words ? 'w' : undefined}>
+          {piece.slice(2, -2)}
+        </strong>
+      );
     }
-    return piece;
+    return plain(piece, i, words);
   });
 }
 
@@ -30,7 +46,7 @@ const BULLET = /^\s*[-*•]\s+/;
 const NUMBERED = /^\s*\d+[.)]\s+/;
 
 /** Renders model or student text safely: paragraphs, lists, bold and LaTeX. */
-export const MathText = memo(function MathText({ text }: { text: string }) {
+export const MathText = memo(function MathText({ text, words = false }: { text: string; words?: boolean }) {
   const blocks: ReactNode[] = [];
   const lines = text.split('\n');
 
@@ -40,6 +56,7 @@ export const MathText = memo(function MathText({ text }: { text: string }) {
       i += 1;
       continue;
     }
+    const start = i;
     const pattern = BULLET.test(line) ? BULLET : NUMBERED.test(line) ? NUMBERED : null;
     if (pattern) {
       const items: string[] = [];
@@ -47,10 +64,11 @@ export const MathText = memo(function MathText({ text }: { text: string }) {
         items.push(lines[i].replace(pattern, ''));
         i += 1;
       }
-      const children = items.map((item, n) => <li key={n}>{inline(item)}</li>);
-      blocks.push(pattern === BULLET ? <ul key={i}>{children}</ul> : <ol key={i}>{children}</ol>);
+      const children = items.map((item, n) => <li key={n}>{inline(item, words)}</li>);
+      // Keyed by where the block starts, so it never shares a key with the block that follows it.
+      blocks.push(pattern === BULLET ? <ul key={start}>{children}</ul> : <ol key={start}>{children}</ol>);
     } else {
-      blocks.push(<p key={i}>{inline(line)}</p>);
+      blocks.push(<p key={i}>{inline(line, words)}</p>);
       i += 1;
     }
   }

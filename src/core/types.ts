@@ -103,6 +103,8 @@ export interface StudyAid {
   createdAt: number;
   /** True when the note was private at the time, so the hint may have drawn on other private notes. */
   madeWhilePrivate?: boolean;
+  /** Function of x drawn under a full solution. Only the last level may have one: a graph shows the answer. */
+  plot?: string | null;
 }
 
 export type ReviewResult = 'remembered' | 'needed_help';

@@ -3,6 +3,7 @@ import { CaptureScreen } from './ui/CaptureScreen';
 import { CloudConsent } from './ui/CloudConsent';
 import { DetailScreen } from './ui/DetailScreen';
 import { HomeScreen } from './ui/HomeScreen';
+import { IntroSplash } from './ui/IntroSplash';
 import { LibraryScreen } from './ui/LibraryScreen';
 import { PracticeScreen } from './ui/PracticeScreen';
 import { usePath } from './ui/router';
@@ -29,9 +30,12 @@ function Screen({ path }: { path: string }) {
 export function App() {
   const path = usePath();
   return (
-    <Shell>
-      <Screen path={path} />
-      <CloudConsent />
-    </Shell>
+    <>
+      <IntroSplash />
+      <Shell>
+        <Screen path={path} />
+        <CloudConsent />
+      </Shell>
+    </>
   );
 }
