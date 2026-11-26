@@ -26,8 +26,27 @@ describe('splitSolution', () => {
     ]);
   });
 
-  it('returns no steps for a single paragraph, so the caller shows plain text', () => {
+  it('returns no steps for a single sentence, so the caller shows plain text', () => {
     expect(splitSolution('Only one sentence with $x$.')).toEqual([]);
     expect(splitSolution('')).toEqual([]);
+  });
+
+  it('turns a paragraph into one step per sentence, never splitting inside math', () => {
+    const prose =
+      'First, substitute the values: $2 + 0.9 \\cdot 10$. Next, add the reward: $2+9=11$. Finally, multiply: $0.7 \\cdot 11 = 7.7$. Thus, $V(s)=7.7$.';
+    expect(splitSolution(prose).map((s) => s.text)).toEqual([
+      'First, substitute the values: $2 + 0.9 \\cdot 10$.',
+      'Next, add the reward: $2+9=11$.',
+      'Finally, multiply: $0.7 \\cdot 11 = 7.7$.',
+      'Thus, $V(s)=7.7$.',
+    ]);
+  });
+
+  it('splits Spanish sentences that start with an accent or an opening mark', () => {
+    expect(splitSolution('Primero suma. Ésta es la clave. ¿Ves el patrón?').map((s) => s.text)).toEqual([
+      'Primero suma.',
+      'Ésta es la clave.',
+      '¿Ves el patrón?',
+    ]);
   });
 });

@@ -61,6 +61,7 @@ function honestReason(planned: RouteReason, source: InferenceOrigin): RouteReaso
     if (
       planned === 'vision_quality' ||
       planned === 'classify_quality' ||
+      planned === 'solution_quality' ||
       planned === 'long_input' ||
       planned === 'user_quality'
     ) {
@@ -86,6 +87,8 @@ export interface GenerateRequest<T> {
    */
   stillPublic?: () => Promise<boolean>;
   maxOutputTokens: number;
+  /** The full worked solution, which the router sends to the cloud first when it may. */
+  deepReasoning?: boolean;
 }
 
 export interface GenerateResult<T> {
@@ -306,6 +309,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
     preference: getPreference(),
     inputChars: req.system.length + req.prompt.length,
     longInputChars: remote().long_input_chars,
+    deepReasoning: req.deepReasoning,
   });
 
   if (decision.kind === 'wait') {

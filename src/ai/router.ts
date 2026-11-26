@@ -19,6 +19,8 @@ export interface RouteContext {
   preference: RoutePreference;
   inputChars: number;
   longInputChars: number;
+  /** The full worked solution: long reasoning, asked for once per exercise. */
+  deepReasoning?: boolean;
 }
 
 export type RouteDecision =
@@ -38,6 +40,8 @@ const wait = (reason: WaitReason): RouteDecision => ({ kind: 'wait', reason });
  *  - Reading a photo favors the cloud because handwriting and math need the best vision.
  *  - Organizing a note (kind, topic, prerequisites) favors the cloud: the student's next steps depend on it.
  *  - Short, frequent hints favor the device: instant, free, private.
+ *  - The full solution favors the cloud: it is long reasoning, asked for once per exercise. The device
+ *    then checks its answers against the function itself, without any model (src/core/plot.ts).
  *  - On paid mobile data the device is preferred even for photos.
  */
 export function decideRoute(c: RouteContext): RouteDecision {
@@ -82,6 +86,7 @@ export function decideRoute(c: RouteContext): RouteDecision {
     // Organizing decides a note's kind and its links, so it gets the stronger model.
     return run(InferenceMode.PREFER_IN_CLOUD, 'classify_quality');
   }
+  if (c.task === 'help' && c.deepReasoning) return run(InferenceMode.PREFER_IN_CLOUD, 'solution_quality');
   if (c.inputChars > c.longInputChars) return run(InferenceMode.PREFER_IN_CLOUD, 'long_input');
   return run(InferenceMode.PREFER_ON_DEVICE, 'everyday_local');
 }

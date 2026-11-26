@@ -28,8 +28,60 @@ export interface HelpOutput {
 
 const invalid = (detail: string) => new AlRatoAiError('invalid_output', detail);
 
+/**
+ * Models sometimes write LaTeX inside JSON without doubling the backslash. "\gamma" is then not a
+ * valid JSON escape and the whole answer would be lost, so a backslash that starts no JSON escape
+ * is doubled before parsing. Valid JSON never has such a backslash, so nothing correct changes.
+ */
+function escapeStrayBackslashes(json: string): string {
+  // Valid escapes, "\\" included, are read as whole pairs, so the second backslash of "\\sum" is never doubled.
+  return json.replace(/\\(["\\/bfnrt]|u[0-9a-fA-F]{4})|\\/g, (match, escape: string | undefined) =>
+    escape === undefined ? '\\\\' : match,
+  );
+}
+
+/**
+ * The other half of the same mistake: "\rho", "\theta", "\beta" and "\frac" are valid JSON escapes,
+ * so they arrive as a carriage return, a tab, a backspace or a form feed followed by letters. Those
+ * characters never belong in a note, so they become the backslash they came from. A line feed is
+ * turned back only inside inline $...$ math that closes on the same line, as in "$\nu$", because a
+ * real line break cannot occur there.
+ */
+export function repairLatex(text: string): string {
+  const fixed = text
+    .replace(/\r(?=[a-zA-Z])/g, '\\r')
+    .replace(/\t(?=[a-zA-Z])/g, '\\t')
+    .replace(/\u0008(?=[a-zA-Z])/g, '\\b')
+    .replace(/\f(?=[a-zA-Z])/g, '\\f');
+  if (!fixed.includes('\n') || !fixed.includes('$')) return fixed;
+  let out = '';
+  let inMath = false;
+  for (let i = 0; i < fixed.length; i += 1) {
+    const c = fixed[i];
+    if (c === '$') {
+      if (fixed[i + 1] === '$') {
+        out += '$$';
+        i += 1;
+        continue;
+      }
+      inMath = !inMath;
+    } else if (c === '\n') {
+      const rest = fixed.slice(i + 1);
+      const close = rest.indexOf('$');
+      const nextBreak = rest.indexOf('\n');
+      if (inMath && /^[a-zA-Z]/.test(rest) && close >= 0 && (nextBreak < 0 || close < nextBreak)) {
+        out += '\\n';
+        continue;
+      }
+      inMath = false;
+    }
+    out += c;
+  }
+  return out;
+}
+
 export function parseJson(raw: string): Record<string, unknown> {
-  const unfenced = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const unfenced = escapeStrayBackslashes(raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, ''));
   const start = unfenced.indexOf('{');
   const end = unfenced.lastIndexOf('}');
   if (start < 0 || end <= start) throw invalid('no_json_object');
@@ -43,7 +95,7 @@ export function parseJson(raw: string): Record<string, unknown> {
 }
 
 const str = (value: unknown, max: number): string =>
-  typeof value === 'string' ? value.trim().slice(0, max) : '';
+  typeof value === 'string' ? repairLatex(value).trim().slice(0, max) : '';
 
 const list = (value: unknown, maxItems: number, maxLen: number): string[] =>
   Array.isArray(value)

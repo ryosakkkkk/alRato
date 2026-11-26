@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
-import { FunctionGraph, writeBoard } from './Board';
+import { AnswerCheckLine, FunctionGraph, MathMorph, writeBoard } from './Board';
 import { Icon } from './Icon';
 import { MathText } from './MathText';
 
@@ -39,6 +39,8 @@ export function SolveDemo() {
     { label: t('demo.s2'), math: '$(x+3)(x-1)=0$' },
     { label: t('demo.s3'), math: `$x=-3 \\quad \\text{${t('demo.or')}} \\quad x=1$` },
   ];
+  // The stage shows the exercise, then transforms it into each step's equation as the step arrives.
+  const stageTex = (visible === 0 ? EXERCISE : steps[visible - 1].math).slice(1, -1);
 
   return (
     <section className="solve-demo" aria-label={t('demo.kicker')}>
@@ -49,6 +51,7 @@ export function SolveDemo() {
         {t('demo.kicker')}
       </div>
       <div ref={board} className="solution board">
+        <MathMorph tex={stageTex} />
         <ol className="steps">
           <li className="step step-exercise">
             <span className="step-no">
@@ -70,6 +73,7 @@ export function SolveDemo() {
           ))}
         </ol>
         {visible > FINAL_STEP && <FunctionGraph source={FUNCTION} label={t('demo.graph')} />}
+        {visible > FINAL_STEP && <AnswerCheckLine plot={FUNCTION} finalLine={steps[FINAL_STEP].math} />}
       </div>
       <p className="solve-note">{t('demo.note')}</p>
     </section>

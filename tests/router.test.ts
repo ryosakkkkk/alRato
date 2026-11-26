@@ -130,3 +130,34 @@ describe('decideRoute', () => {
     });
   });
 });
+
+describe('the full worked solution', () => {
+  it('goes to the cloud first when the cloud may be used, while hints stay on the device', () => {
+    expect(decideRoute({ ...base, deepReasoning: true })).toEqual({
+      kind: 'run',
+      mode: InferenceMode.PREFER_IN_CLOUD,
+      reason: 'solution_quality',
+    });
+    expect(decideRoute(base)).toMatchObject({ reason: 'everyday_local' });
+  });
+
+  it('never sends a private note to the cloud, even for a full solution', () => {
+    expect(decideRoute({ ...base, deepReasoning: true, isPrivate: true })).toMatchObject({
+      mode: InferenceMode.ONLY_ON_DEVICE,
+      reason: 'private_note',
+    });
+  });
+
+  it('runs on the device when the student declined the cloud', () => {
+    expect(decideRoute({ ...base, deepReasoning: true, cloudConsent: 'declined' })).toMatchObject({
+      mode: InferenceMode.ONLY_ON_DEVICE,
+    });
+  });
+
+  it('respects a student who prefers the device', () => {
+    expect(decideRoute({ ...base, deepReasoning: true, preference: 'local' })).toMatchObject({
+      mode: InferenceMode.PREFER_ON_DEVICE,
+      reason: 'user_local',
+    });
+  });
+});

@@ -79,6 +79,7 @@ async function runHelp(captureId: string, level: number): Promise<StudyAid> {
     isPrivate: capture.isPrivate,
     stillPublic: () => isPublicNow(captureId),
     maxOutputTokens: Math.max(500, words * 5),
+    deepReasoning: action === 'hint' && level >= MAX_LEVEL,
   });
 
   // The student may have edited, deleted or locked the note while the model was thinking.

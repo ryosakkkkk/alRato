@@ -2,7 +2,7 @@ import type { Candidate } from '../core/retrieval';
 import { clip } from '../core/text';
 import type { HelpAction, Lang } from '../core/types';
 
-export const PROMPT_VERSION = '2026-11-e';
+export const PROMPT_VERSION = '2026-11-f';
 
 /** Keeps every request inside Gemini Nano's input budget. */
 export const MAX_NOTE_CHARS = 2400;
@@ -44,7 +44,7 @@ const LADDER: Record<number, string> = {
   1: 'Level 1, nudge: ask one guiding question or point to where to look. Do not name the method or compute anything.',
   2: 'Level 2, hint: name the idea or method to use and why it applies. Do not compute the result.',
   3: 'Level 3, first step: work out only the first step and leave the rest to the student.',
-  4: 'Level 4, solution: solve the whole exercise step by step. Write one line per step: a few words saying what you do, then the result in LaTeX between $ signs. Use at most 8 lines, and end with the final result on its own line. If the exercise is about one function of a real variable, or an equation in one unknown, also set "plot" to that function in plain notation with x as the variable, for example "x^2+2x-3" (for an equation, move every term to one side). Otherwise set "plot" to "".',
+  4: 'Level 4, solution: solve the whole exercise step by step. Write one line per step, numbered "1.", "2.", and put a line break (\\n) between steps, never a single paragraph. Each line: a few words saying what you do, then the result in LaTeX between $ signs. Use at most 8 lines, and end with the final result on its own line. If the exercise is about one function of a real variable, or an equation in one unknown, also set "plot" to that function in plain notation with x as the variable, for example "x^2+2x-3" (for an equation, move every term to one side). Otherwise set "plot" to "".',
 };
 
 const ACTION_GUIDE: Record<Exclude<HelpAction, 'hint'>, string> = {

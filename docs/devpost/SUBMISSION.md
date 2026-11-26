@@ -53,7 +53,7 @@ A student photographs the board and looks back up. That is all they do in class.
 
 1. **Reads** the photo, including handwriting and math, into editable text with LaTeX.
 2. **Organizes** it by subject and topic, and extracts two things note apps usually do not: what the note *teaches* and what it *needs* as prior knowledge.
-3. **Helps without giving the answer away.** On an exercise, the student climbs a ladder: nudge, hint, first step, full solution. The full solution is written on a dark board one symbol at a time, and when the exercise is a function or an equation in *x*, the app draws its graph with the answers marked.
+3. **Helps without giving the answer away.** On an exercise, the student climbs a ladder: nudge, hint, first step, full solution. The full solution plays like an animated math video: the main equation transforms from one step to the next while each step is written symbol by symbol. When the exercise is a function or an equation in *x*, the app draws its graph and the device checks the cloud's answers by itself, with no model: the cloud reasons, the device verifies.
 4. **Connects** the note to one they already have. On-device retrieval matches what this note *needs* against what older notes *teach*. A Bellman equation exercise links to the student's old weighted-average note, because probabilities act as weights, even though the two notes share almost no words.
 5. **Schedules practice**, so the student recalls the idea again over the following days and weeks.
 
