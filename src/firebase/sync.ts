@@ -907,13 +907,15 @@ export class SyncEngine {
       if (!hasCloudPhoto) blobs = await fitPhotos(note, this.options.compress);
       assertFits(fields, blobs);
 
-      // Compressing takes a moment, and the student may have acted in the meantime.
+      // Compressing takes a moment, and the student may have acted in the meantime. The remote is loaded
+      // before the last check, so nothing waits between that check and the write.
+      const remote = await this.remote();
       const latest = await database.captures.get(id);
       if (!latest || !isSyncable(latest) || latest.updatedAt !== note.updatedAt) {
         this.again = true;
         return;
       }
-      await (await this.remote()).put(fields, blobs, { revive: note.syncedAt === SYNC_REMOVED });
+      await remote.put(fields, blobs, { revive: note.syncedAt === SYNC_REMOVED });
       this.tooLarge.delete(id);
       await database.captures.update(id, { syncedAt: note.updatedAt });
     } catch (error) {

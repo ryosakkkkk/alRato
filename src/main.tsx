@@ -25,7 +25,8 @@ createRoot(document.getElementById('root')!).render(
 registerSW({ immediate: true });
 
 async function boot() {
-  await recoverInterrupted();
+  // Queued behind any other tab that is working the queue, so boot does not wait for that tab.
+  void recoverInterrupted();
   await refreshDevice(getLang());
   kickQueue();
   // Sync and the Firebase Auth and Firestore SDKs load only for someone who signed in before.
@@ -42,9 +43,13 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) void refreshDevice(getLang()).then(kickQueue);
 });
 
-let lastDeviceState = deviceStatus().text;
+// Either the text model or the vision model becoming ready can unblock a waiting note.
+let lastDeviceState = deviceStatus();
 subscribeDevice(() => {
-  const next = deviceStatus().text;
-  if (next === 'ready' && lastDeviceState !== 'ready') kickQueue();
+  const next = deviceStatus();
+  const becameReady =
+    (next.text === 'ready' && lastDeviceState.text !== 'ready') ||
+    (next.vision === 'ready' && lastDeviceState.vision !== 'ready');
+  if (becameReady) kickQueue();
   lastDeviceState = next;
 });

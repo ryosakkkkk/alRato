@@ -1,180 +1,89 @@
 1
-00:00:00,150 --> 00:00:02,620
-Every class ends the same way.
+00:00:00,000 --> 00:00:04,920
+alRato. Snap the board. Stay in class. Understand it al
+rato.
 
 2
-00:00:02,700 --> 00:00:08,770
-The board fills up, the phones come out,
-and the photo lands in a camera roll.
+00:00:05,025 --> 00:00:11,459
+Every class ends the same way: the board fills up, the
+phones come out, and the photo lands in a camera roll.
 
 3
-00:00:09,150 --> 00:00:12,706
-For many of us, that's
-the last time we see it.
+00:00:11,559 --> 00:00:15,680
+alRato turns each photo into an organized note. These two
+are sample notes that ship with the app.
 
 4
-00:00:12,786 --> 00:00:16,770
-It feels like studying,
-but nothing has happened yet.
+00:00:15,780 --> 00:00:20,720
+A generated whiteboard stands in for a real photo. It goes
+through the same pipeline a photo would.
 
 5
-00:00:17,150 --> 00:00:19,611
-alRato keeps the two-second habit.
+00:00:20,820 --> 00:00:24,130
+The app asks before any cloud model is used. Only the
+student can agree to it.
 
 6
-00:00:19,691 --> 00:00:22,017
-Snap the board and look back up.
+00:00:26,522 --> 00:00:35,080
+Reading the board runs on the cloud model. The wait is cut;
+the receipts are real.
 
 7
-00:00:22,097 --> 00:00:26,296
-"Al rato" is Latin American
-Spanish for "in a little while",
+00:00:35,180 --> 00:00:43,391
+Reading handwriting prefers the cloud. The receipt shows the
+route the SDK actually took.
 
 8
-00:00:26,376 --> 00:00:28,770
-and that's when the work happens.
+00:00:43,491 --> 00:00:57,160
+This note is an exercise, so it gets a hint ladder. It
+teaches instead of answering.
 
 9
-00:00:29,150 --> 00:00:32,096
-Later, it reads the photo, math included.
+00:00:57,260 --> 00:01:08,233
+It connects the exercise to a note you already have. It
+matches what the exercise needs against what older notes
+teach, so the weighted average note appears even though the
+words differ.
 
 10
-00:00:32,176 --> 00:00:37,273
-Built on Firebase AI Logic, alRato
-picks an inference mode for each task.
+00:01:08,333 --> 00:01:17,289
+Practice turns the note into a question you answer from
+memory, then check yourself.
 
 11
-00:00:37,353 --> 00:00:42,450
-Reading handwriting prefers the cloud,
-so this receipt says In the cloud,
+00:01:17,389 --> 00:01:22,938
+The review is scheduled, and it comes back over the
+following days. Recall and spacing are among the
+best-supported study techniques.
 
 12
-00:00:42,530 --> 00:00:44,938
-with the bytes sent and the time.
+00:01:23,038 --> 00:01:33,122
+Now the connection drops. A new photo is saved at once and
+waits. When the network returns, alRato finishes the note by
+itself.
 
 13
-00:00:45,018 --> 00:00:48,770
-That label is the real
-inference source from the SDK.
+00:01:33,222 --> 00:01:38,031
+Back online, the note finishes by itself, with no taps.
 
 14
-00:00:49,150 --> 00:00:51,818
-It won't just hand over the answer.
+00:01:38,131 --> 00:01:41,819
+A handwritten board stands in for a real photo. This one is
+marked private before it is saved.
 
 15
-00:00:51,898 --> 00:00:56,398
-In one large field study,
-unguarded AI raised practice scores
+00:01:41,919 --> 00:01:48,846
+Mark a note private and it never leaves this device. This
+computer has no local model, so the note waits instead of
+going to the cloud.
 
 16
-00:00:56,478 --> 00:00:58,724
-and then lowered exam scores.
+00:01:48,946 --> 00:01:55,886
+On a computer with Gemini Nano, the same hints run locally.
+This recording was made on a computer without it, so every
+answer here came from the cloud model.
 
 17
-00:00:58,804 --> 00:01:03,233
-So alRato gives you a ladder:
-a nudge, a hint, a first step,
-
-18
-00:01:03,313 --> 00:01:05,770
-and only then the full solution.
-
-19
-00:01:06,150 --> 00:01:09,081
-Here's the moment we built this for.
-
-20
-00:01:09,161 --> 00:01:14,952
-This exercise looks new, but you already
-have a note on weighted averages,
-
-21
-00:01:15,032 --> 00:01:21,501
-and alRato finds it, by matching what this
-note needs against what your older notes
-
-22
-00:01:21,581 --> 00:01:23,910
-teach, right on your device.
-
-23
-00:01:23,990 --> 00:01:26,770
-The probabilities are the weights.
-
-24
-00:01:27,150 --> 00:01:31,845
-On a laptop with Gemini Nano,
-the same hint runs locally.
-
-25
-00:01:31,925 --> 00:01:36,073
-The receipt now says
-On this device, nothing sent.
-
-26
-00:01:36,153 --> 00:01:40,770
-Same code, same schema,
-a different route for this task.
-
-27
-00:01:41,150 --> 00:01:43,481
-Now we cut the network.
-
-28
-00:01:43,561 --> 00:01:46,250
-The laptop keeps answering.
-
-29
-00:01:46,330 --> 00:01:52,054
-The phone has no local model,
-so it saves the note and waits.
-
-30
-00:01:52,134 --> 00:01:57,770
-When the connection comes back,
-the note finishes by itself.
-
-31
-00:01:58,150 --> 00:02:01,709
-Some notes should never leave your device.
-
-32
-00:02:01,789 --> 00:02:05,982
-Mark one private and it runs
-locally, or it waits.
-
-33
-00:02:06,062 --> 00:02:12,627
-We found that the SDK's device-only mode
-can reach the cloud in browsers without
-
-34
-00:02:12,707 --> 00:02:17,770
-the Prompt API, so alRato blocks
-that call before it happens.
-
-35
-00:02:18,150 --> 00:02:20,912
-Finally, the note becomes practice.
-
-36
-00:02:20,992 --> 00:02:26,086
-You try to recall it, check yourself,
-and it comes back days later.
-
-37
-00:02:26,166 --> 00:02:31,770
-Recall and spacing are two of the
-best-supported study techniques we have.
-
-38
-00:02:32,150 --> 00:02:36,219
-alRato is open source.
-
-39
-00:02:36,299 --> 00:02:38,771
-Snap it now.
-
-40
-00:02:38,851 --> 00:02:42,920
-Understand it al rato.
+00:01:55,986 --> 00:02:01,908
+Snap it now. Understand it al rato. Open source (Apache-2.0)
+· Built with Firebase AI Logic · alrato-e3564.web.app

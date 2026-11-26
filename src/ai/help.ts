@@ -1,4 +1,4 @@
-import { db, newId } from '../core/db';
+import { db, isPublicNow, newId } from '../core/db';
 import { MAX_CANDIDATES, rankCandidates } from '../core/retrieval';
 import { getLang } from '../core/settings';
 import type { Capture, HelpAction, NoteKind, StudyAid } from '../core/types';
@@ -28,6 +28,17 @@ export function retrievalPool(current: Pick<Capture, 'isPrivate'>, library: Capt
   return current.isPrivate ? library : library.filter((note) => !note.isPrivate);
 }
 
+/**
+ * The hints already given at earlier levels. A hint written while the note was private may have drawn
+ * on other private notes, so a note that is public now never sends those hints back to the cloud.
+ */
+export function earlierHints(note: Pick<Capture, 'isPrivate'>, earlier: StudyAid[], level: number): string[] {
+  return earlier
+    .filter((aid) => aid.level < level)
+    .filter((aid) => note.isPrivate || aid.madeWhilePrivate === false)
+    .map((aid) => aid.body);
+}
+
 const inFlight = new Map<string, Promise<StudyAid>>();
 
 /** A double tap, or a second tab, must not pay for the same hint twice. */
@@ -49,7 +60,7 @@ async function runHelp(captureId: string, level: number): Promise<StudyAid> {
   const earlier = await db.aids.where('[captureId+revision]').equals([captureId, revision]).sortBy('level');
   const existing = earlier.find((a) => a.level === level);
   if (existing) return existing;
-  const previous = earlier.filter((a) => a.level < level).map((a) => a.body);
+  const previous = earlierHints(capture, earlier, level);
 
   const library = await db.captures.toArray();
   const candidates = rankCandidates(capture, retrievalPool(capture, library), MAX_CANDIDATES);
@@ -66,6 +77,7 @@ async function runHelp(captureId: string, level: number): Promise<StudyAid> {
         candidates.map((c) => c.captureId),
       ),
     isPrivate: capture.isPrivate,
+    stillPublic: () => isPublicNow(captureId),
     maxOutputTokens: Math.max(500, words * 5),
   });
 
@@ -87,6 +99,7 @@ async function runHelp(captureId: string, level: number): Promise<StudyAid> {
     receipt,
     promptVersion: PROMPT_VERSION,
     createdAt: Date.now(),
+    madeWhilePrivate: capture.isPrivate,
   };
   await db.aids.add(aid);
   return aid;

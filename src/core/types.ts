@@ -99,6 +99,8 @@ export interface StudyAid {
   receipt: Receipt;
   promptVersion: string;
   createdAt: number;
+  /** True when the note was private at the time, so the hint may have drawn on other private notes. */
+  madeWhilePrivate?: boolean;
 }
 
 export type ReviewResult = 'remembered' | 'needed_help';

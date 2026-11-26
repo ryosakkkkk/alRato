@@ -33,3 +33,9 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
 }
 
 export const newId = (): string => crypto.randomUUID();
+
+/** Reads the note's privacy at the moment a cloud call is about to leave, not when the work began. */
+export async function isPublicNow(id: string): Promise<boolean> {
+  const note = await db.captures.get(id);
+  return note !== undefined && !note.isPrivate;
+}

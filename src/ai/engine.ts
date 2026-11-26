@@ -79,6 +79,11 @@ export interface GenerateRequest<T> {
   schema: object;
   parse: (raw: Record<string, unknown>) => T;
   isPrivate: boolean;
+  /**
+   * Checked just before a request could leave the device. The note's privacy may have changed while
+   * the request was being prepared, and a note that became private must never reach the cloud.
+   */
+  stillPublic?: () => Promise<boolean>;
   maxOutputTokens: number;
 }
 
@@ -216,6 +221,9 @@ async function attempt<T>(
   cloudModel: string,
 ): Promise<Attempt> {
   assertOnDevicePossible(mode);
+  if (mode !== InferenceMode.ONLY_ON_DEVICE && req.stillPublic && !(await req.stillPublic())) {
+    throw new AlRatoAiError('stale', 'The note became private before the request was sent');
+  }
   const started = performance.now();
   const timeoutMs = cloudTimeout(req.task);
   const lease = leaseModel(req, mode, lang, cloudModel, timeoutMs);

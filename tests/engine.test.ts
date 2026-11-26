@@ -73,6 +73,19 @@ afterEach(() => {
   removeNano();
 });
 
+describe('a note that turns private while its cloud request is prepared', () => {
+  it('sends nothing to the cloud and reports the answer as stale', async () => {
+    await expect(generate(request({ stillPublic: async () => false }))).rejects.toMatchObject({ failure: 'stale' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('still uses the cloud while the note stays public', async () => {
+    const result = await generate(request({ stillPublic: async () => true }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(result.data.text).toBe('from the cloud');
+  });
+});
+
 describe('Firebase SDK behavior we guard against', () => {
   it('ONLY_ON_DEVICE reaches the network when the browser has no Prompt API', async () => {
     const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });

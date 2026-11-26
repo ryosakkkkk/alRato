@@ -3,16 +3,29 @@ import { AlRatoAiError, classifyError, WaitForRoute } from '../ai/errors';
 import { analyzePrompt, analyzeSystem, readPrompt, readSystem } from '../ai/prompts';
 import { ANALYZE_SCHEMA, READ_SCHEMA } from '../ai/schemas';
 import { validateAnalysis, validateRead } from '../ai/validate';
-import { db } from './db';
+import { db, isPublicNow } from './db';
 import { getLang } from './settings';
 import type { Capture, Receipt } from './types';
 
 export const MAX_ATTEMPTS = 5;
 const BASE_BACKOFF_MS = 4_000;
+/** A note waiting for the daily allowance is checked again this often. Both resets fall inside one interval. */
+const QUOTA_RECHECK_MS = 15 * 60_000;
 
 let running = false;
 let rerun = false;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+const QUEUE_LOCK = 'alrato.queue';
+
+/**
+ * One tab at a time works the queue. A second tab waits for the first, and a closed tab releases the
+ * lock automatically. Without Web Locks, each tab works alone, as it did before.
+ */
+function withQueueLock<T>(work: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  return locks ? locks.request(QUEUE_LOCK, work) : work();
+}
 
 /** Wakes the queue. Safe to call at any time and from anywhere. */
 export function kickQueue(): void {
@@ -26,14 +39,18 @@ async function drain(): Promise<void> {
   }
   running = true;
   try {
-    do {
-      rerun = false;
-      const now = Date.now();
-      const queued = await db.captures.where('status').equals('queued').sortBy('createdAt');
-      for (const capture of queued) {
-        if (capture.nextAttemptAt <= now) await processCapture(capture.id);
-      }
-    } while (rerun);
+    await withQueueLock(async () => {
+      // Holding the lock means no other tab is working, so anything still "processing" is orphaned.
+      await requeueInterrupted();
+      do {
+        rerun = false;
+        const now = Date.now();
+        const queued = await db.captures.where('status').equals('queued').sortBy('createdAt');
+        for (const capture of queued) {
+          if (capture.nextAttemptAt <= now) await processCapture(capture.id);
+        }
+      } while (rerun);
+    });
   } finally {
     running = false;
   }
@@ -43,15 +60,23 @@ async function drain(): Promise<void> {
 async function armRetryTimer(): Promise<void> {
   if (retryTimer) clearTimeout(retryTimer);
   const queued = await db.captures.where('status').equals('queued').toArray();
+  const delays: number[] = [];
   const future = queued.filter((c) => !c.waitReason && c.nextAttemptAt > Date.now());
-  if (future.length === 0) return;
-  const soonest = Math.min(...future.map((c) => c.nextAttemptAt));
-  retryTimer = setTimeout(kickQueue, Math.max(250, soonest - Date.now()));
+  if (future.length > 0) delays.push(Math.min(...future.map((c) => c.nextAttemptAt)) - Date.now());
+  // A note waiting for the daily allowance wakes up by itself, even while the tab stays open.
+  if (queued.some((c) => c.waitReason === 'cloud_cap_no_model')) delays.push(QUOTA_RECHECK_MS);
+  if (delays.length === 0) return;
+  retryTimer = setTimeout(kickQueue, Math.max(250, Math.min(...delays)));
+}
+
+/** A note still marked "processing" was left by a tab that closed mid-work. Call only while holding the lock. */
+async function requeueInterrupted(): Promise<void> {
+  await db.captures.where('status').equals('processing').modify({ status: 'queued' });
 }
 
 /** Captures left in `processing` by a closed tab go back to the queue on startup. */
 export async function recoverInterrupted(): Promise<void> {
-  await db.captures.where('status').equals('processing').modify({ status: 'queued' });
+  await withQueueLock(requeueInterrupted);
 }
 
 /**
@@ -87,14 +112,27 @@ async function processCapture(id: string): Promise<void> {
         schema: READ_SCHEMA,
         parse: validateRead,
         isPrivate: capture.isPrivate,
+        stillPublic: () => isPublicNow(id),
         maxOutputTokens: 1500,
       });
       if (!(await stillCurrent(id, capture))) return;
       text = read.data.text;
       legibility = read.data.legibility;
       receipts.push(read.receipt);
-      // Saved right away: if organizing fails, the student keeps the transcription.
-      await db.captures.update(id, { text, textBy: 'ai', legibility, receipts, updatedAt: Date.now() });
+      // Saved right away, so the student keeps the transcription if organizing fails. The revision and the
+      // privacy are checked in the same transaction, so a student edit that lands now is never overwritten.
+      const saved = await db.transaction('rw', db.captures, async () => {
+        const latest = await db.captures.get(id);
+        if (!latest || latest.revision !== revision || latest.status !== 'processing') return false;
+        if (latest.isPrivate !== capture.isPrivate) {
+          await db.captures.update(id, { status: 'queued', waitReason: null, errorCode: null, nextAttemptAt: 0 });
+          rerun = true;
+          return false;
+        }
+        await db.captures.update(id, { text, textBy: 'ai', legibility, receipts, updatedAt: Date.now() });
+        return true;
+      });
+      if (!saved) return;
     }
 
     const analysis = await generate({
@@ -104,6 +142,7 @@ async function processCapture(id: string): Promise<void> {
       schema: ANALYZE_SCHEMA,
       parse: validateAnalysis,
       isPrivate: capture.isPrivate,
+      stillPublic: () => isPublicNow(id),
       maxOutputTokens: 500,
     });
     if (!(await stillCurrent(id, capture))) return;
@@ -148,6 +187,13 @@ async function handleFailure(id: string, revision: number, capture: Capture, err
 
   if (error instanceof WaitForRoute) {
     await db.captures.update(id, { status: 'queued', waitReason: error.reason, nextAttemptAt: 0 });
+    return;
+  }
+
+  // The note became private while its cloud call was being prepared. The next attempt follows the new rule.
+  if (error instanceof AlRatoAiError && error.failure === 'stale') {
+    await db.captures.update(id, { status: 'queued', waitReason: null, errorCode: null, nextAttemptAt: 0 });
+    rerun = true;
     return;
   }
 

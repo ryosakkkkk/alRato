@@ -138,7 +138,8 @@ export async function loadSampleLibrary(lang: Lang): Promise<void> {
     textBy: 'student',
     legibility: 'high',
     teaches: [t('sample.weighted.title')],
-    teachesKeys: ['weighted average', 'weighted mean', 'expected value'],
+    // The note defines each weight as "e.g. a probability", so the concept it teaches includes probability.
+    teachesKeys: ['weighted average', 'weighted mean', 'expected value', 'probability'],
     needsKeys: ['arithmetic mean'],
     status: 'ready',
     analyzedRevision: 1,
