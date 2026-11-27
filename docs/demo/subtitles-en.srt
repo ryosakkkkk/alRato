@@ -1,89 +1,101 @@
 1
-00:00:00,000 --> 00:00:04,920
+00:00:00,000 --> 00:00:05,137
 alRato. Snap the board. Stay in class. Understand it al
 rato.
 
 2
-00:00:05,025 --> 00:00:11,459
+00:00:05,263 --> 00:00:11,850
 Every class ends the same way: the board fills up, the
 phones come out, and the photo lands in a camera roll.
 
 3
-00:00:11,559 --> 00:00:15,680
+00:00:11,950 --> 00:00:26,003
+When alRato solves an exercise, the equation transforms step
+by step, the graph is drawn, and the device checks the
+answers without AI. This is a built-in example.
+
+4
+00:00:26,103 --> 00:00:31,477
 alRato turns each photo into an organized note. These two
 are sample notes that ship with the app.
 
-4
-00:00:15,780 --> 00:00:20,720
+5
+00:00:31,577 --> 00:00:37,044
 A generated whiteboard stands in for a real photo. It goes
 through the same pipeline a photo would.
 
-5
-00:00:20,820 --> 00:00:24,130
+6
+00:00:37,144 --> 00:00:41,913
 The app asks before any cloud model is used. Only the
 student can agree to it.
 
-6
-00:00:26,522 --> 00:00:35,080
+7
+00:00:43,522 --> 00:00:48,270
 Reading the board runs on the cloud model. The wait is cut;
 the receipts are real.
 
-7
-00:00:35,180 --> 00:00:43,391
+8
+00:00:48,370 --> 00:00:57,519
 Reading handwriting prefers the cloud. The receipt shows the
 route the SDK actually took.
 
-8
-00:00:43,491 --> 00:00:57,160
+9
+00:00:57,619 --> 00:01:13,296
 This note is an exercise, so it gets a hint ladder. It
 teaches instead of answering.
 
-9
-00:00:57,260 --> 00:01:08,233
+10
+00:01:13,396 --> 00:01:33,759
 It connects the exercise to a note you already have. It
 matches what the exercise needs against what older notes
 teach, so the weighted average note appears even though the
 words differ.
 
-10
-00:01:08,333 --> 00:01:17,289
+11
+00:01:33,859 --> 00:01:45,478
+The last rung is the full solution: long reasoning, so it
+goes to the cloud model. It plays on the board, one step at
+a time.
+
+12
+00:01:45,578 --> 00:01:57,512
 Practice turns the note into a question you answer from
 memory, then check yourself.
 
-11
-00:01:17,389 --> 00:01:22,938
+13
+00:01:57,612 --> 00:02:04,853
 The review is scheduled, and it comes back over the
 following days. Recall and spacing are among the
 best-supported study techniques.
 
-12
-00:01:23,038 --> 00:01:33,122
+14
+00:02:04,953 --> 00:02:17,134
 Now the connection drops. A new photo is saved at once and
 waits. When the network returns, alRato finishes the note by
 itself.
 
-13
-00:01:33,222 --> 00:01:38,031
+15
+00:02:17,234 --> 00:02:22,185
 Back online, the note finishes by itself, with no taps.
 
-14
-00:01:38,131 --> 00:01:41,819
+16
+00:02:22,285 --> 00:02:27,656
 A handwritten board stands in for a real photo. This one is
 marked private before it is saved.
 
-15
-00:01:41,919 --> 00:01:48,846
+17
+00:02:27,756 --> 00:02:35,541
 Mark a note private and it never leaves this device. This
 computer has no local model, so the note waits instead of
 going to the cloud.
 
-16
-00:01:48,946 --> 00:01:55,886
+18
+00:02:35,641 --> 00:02:44,346
 On a computer with Gemini Nano, the same hints run locally.
 This recording was made on a computer without it, so every
 answer here came from the cloud model.
 
-17
-00:01:55,986 --> 00:02:01,908
+19
+00:02:44,446 --> 00:02:52,346
 Snap it now. Understand it al rato. Open source (Apache-2.0)
 · Built with Firebase AI Logic · alrato-e3564.web.app

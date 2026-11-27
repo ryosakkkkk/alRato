@@ -11,7 +11,7 @@ Last updated November 25, 2026. Done: the hosted app, the Firebase project with 
 | Public repository with a visible open source license | [`LICENSE`](../../LICENSE) (Apache-2.0) |
 | Firebase AI Logic imported and really called | [`src/ai/engine.ts`](../../src/ai/engine.ts) |
 | English description: how AI Logic is used, features, value | Section 3 and the [README](../../README.md) |
-| Video of 3 minutes or less, in English or with English subtitles | [`docs/demo/VIDEO_SCRIPT.md`](../demo/VIDEO_SCRIPT.md) (2:02, English captions) |
+| Video of 3 minutes or less, in English or with English subtitles | [`docs/demo/VIDEO_SCRIPT.md`](../demo/VIDEO_SCRIPT.md) (2:52, English captions) |
 | App supports English | English and Spanish ([`src/i18n/`](../../src/i18n)) |
 | App Check | [`src/firebase/app.ts`](../../src/firebase/app.ts) |
 | No keys, secrets or personal data | Config comes from a git-ignored `.env.local` |
