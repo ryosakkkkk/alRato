@@ -34,8 +34,19 @@ export const HELP_SCHEMA = {
     connection: { type: 'string' },
     practice_q: { type: 'string' },
     practice_a: { type: 'string' },
-    // Optional: the function to draw under a full solution, in plain notation with x.
-    plot: { type: 'string' },
+    // Full solutions only: the method in a few words, and the picture the device should draw.
+    plan: { type: 'string' },
+    visual: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['none', 'graph', 'intersection', 'area', 'tangent', 'unit_circle', 'parametric'] },
+        f: { type: 'string' },
+        g: { type: 'string' },
+        a: { type: 'string' },
+        b: { type: 'string' },
+      },
+      required: ['kind', 'f', 'g', 'a', 'b'],
+    },
   },
   required: ['help', 'source_id', 'connection', 'practice_q', 'practice_a'],
 } as const;

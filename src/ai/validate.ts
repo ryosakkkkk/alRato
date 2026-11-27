@@ -1,5 +1,5 @@
-import { compileFunction, MAX_PLOT_CHARS } from '../core/plot';
-import type { NoteKind } from '../core/types';
+import { compileExpression, compileFunction, evaluateConstant, MAX_PLOT_CHARS } from '../core/plot';
+import type { NoteKind, VisualSpec } from '../core/types';
 import { AlRatoAiError } from './errors';
 
 export interface ReadOutput {
@@ -24,6 +24,10 @@ export interface HelpOutput {
   practice: { question: string; answer: string } | null;
   /** A function of x to draw under the solution, only when it can be read safely. */
   plot: string | null;
+  /** The picture to draw under a full solution, only when every part of it can be read safely. */
+  visual: VisualSpec | null;
+  /** The solver's method in a few words. */
+  plan: string;
 }
 
 const invalid = (detail: string) => new AlRatoAiError('invalid_output', detail);
@@ -145,7 +149,52 @@ export function validateHelp(raw: Record<string, unknown>, candidateIds: readonl
   const practice = question && answer ? { question, answer } : null;
 
   const plotSource = str(raw.plot, MAX_PLOT_CHARS);
-  const plot = plotSource && compileFunction(plotSource) ? plotSource : null;
+  const legacyPlot = plotSource && compileFunction(plotSource) ? plotSource : null;
+  const visual = validateVisual(raw.visual) ?? (legacyPlot ? { kind: 'graph' as const, f: legacyPlot } : null);
+  // The plain graph keeps its old field too, so the device check of older solutions still finds it.
+  const plot = legacyPlot ?? (visual?.kind === 'graph' ? visual.f : null);
 
-  return { body, link, practice, plot };
+  return { body, link, practice, plot, visual, plan: str(raw.plan, 80) };
+}
+
+const constantOf = (value: unknown): number | null =>
+  typeof value === 'number' ? (Number.isFinite(value) ? value : null) : typeof value === 'string' && value.trim() ? evaluateConstant(value) : null;
+
+/**
+ * The picture a solver asked for, checked piece by piece: every formula must be one the device can
+ * read safely and every number must make sense. Anything else is dropped, never the solution.
+ */
+export function validateVisual(raw: unknown): VisualSpec | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const v = raw as Record<string, unknown>;
+  const f = str(v.f, MAX_PLOT_CHARS);
+  const g = str(v.g, MAX_PLOT_CHARS);
+  const a = constantOf(v.a);
+  const b = constantOf(v.b);
+  switch (v.kind) {
+    case 'graph':
+      return compileFunction(f) ? { kind: 'graph', f } : null;
+    case 'intersection':
+      return compileFunction(f) && compileFunction(g) ? { kind: 'intersection', f, g } : null;
+    case 'area':
+      return compileFunction(f) && a !== null && b !== null && a < b && b - a <= 60 ? { kind: 'area', f, a, b } : null;
+    case 'tangent': {
+      const fn = compileFunction(f);
+      if (!fn) return null;
+      return a !== null && Number.isFinite(fn(a)) && Math.abs(a) <= 50 ? { kind: 'tangent', f, a } : { kind: 'graph', f };
+    }
+    case 'unit_circle': {
+      const trig = /tan|tg/i.test(f) ? 'tan' : /cos/i.test(f) ? 'cos' : 'sin';
+      return a !== null && Math.abs(a) <= 100 ? { kind: 'unit_circle', f: trig, a } : { kind: 'unit_circle', f: trig };
+    }
+    case 'parametric': {
+      const x = compileExpression(f, { variable: 't' });
+      const y = compileExpression(g, { variable: 't' });
+      const from = a ?? 0;
+      const to = b ?? 2 * Math.PI;
+      return x && y && from < to && to - from <= 200 ? { kind: 'parametric', f, g, a: from, b: to } : null;
+    }
+    default:
+      return null;
+  }
 }

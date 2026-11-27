@@ -33,8 +33,8 @@ export default defineConfig({
         ],
         description:
           'Photograph the board in class. alRato turns it into hints, connections to your own notes and spaced practice, on your device when it can and in the cloud when it must.',
-        theme_color: '#07070c',
-        background_color: '#07070c',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',
@@ -48,8 +48,17 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // The phone's local model runtime is large and optional: it is cached the first time it is used.
+        globIgnores: ['**/webllm-*.js'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/assets\/webllm-[^/]+\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'alrato-local-model-runtime', expiration: { maxEntries: 4 } },
+          },
+        ],
       },
     }),
   ],
@@ -57,7 +66,17 @@ export default defineConfig({
   css: { postcss: { plugins: [] } },
   // .local holds browser profiles, test builds and caches that change constantly.
   server: { watch: { ignored: ['**/.local/**'] } },
-  build: { target: 'es2022', sourcemap: false, chunkSizeWarningLimit: 1200 },
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        // The local model runtime gets a stable name, so the service worker can cache it on first use.
+        manualChunks: (id) => (id.includes('@mlc-ai/web-llm') ? 'webllm' : undefined),
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],

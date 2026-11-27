@@ -9,6 +9,8 @@ import { firebaseApp, isFirebaseConfigured } from './app';
 export const RC_DEFAULTS = {
   model_vision: 'gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen',
   model_text: 'gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash',
+  /** The solver: full worked solutions get the strongest model first. */
+  model_reasoning: 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite',
   long_input_chars: 3500,
   daily_cloud_cap: 40,
 };
@@ -30,6 +32,7 @@ export async function loadRemoteConfig(): Promise<void> {
     values = {
       model_vision: getValue(rc, 'model_vision').asString() || RC_DEFAULTS.model_vision,
       model_text: getValue(rc, 'model_text').asString() || RC_DEFAULTS.model_text,
+      model_reasoning: getValue(rc, 'model_reasoning').asString() || RC_DEFAULTS.model_reasoning,
       long_input_chars: getValue(rc, 'long_input_chars').asNumber() || RC_DEFAULTS.long_input_chars,
       daily_cloud_cap: getValue(rc, 'daily_cloud_cap').asNumber() || RC_DEFAULTS.daily_cloud_cap,
     };

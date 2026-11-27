@@ -1,4 +1,5 @@
 import type { InferenceMode } from 'firebase/ai';
+import type { SolutionCheck } from './verifier';
 
 export type Lang = 'en' | 'es';
 export type NoteKind = 'board' | 'formula' | 'exercise' | 'question' | 'other';
@@ -106,6 +107,32 @@ export interface StudyAid {
   madeWhilePrivate?: boolean;
   /** Function of x drawn under a full solution. Only the last level may have one: a graph shows the answer. */
   plot?: string | null;
+  /** The picture the solver chose for a full solution, drawn on the device. */
+  visual?: VisualSpec | null;
+  /** The method the solver planned, in a few words. */
+  plan?: string;
+  /** The device's own check of a full solution; null when it could not tell. Absent on older aids. */
+  check?: SolutionCheck | null;
+  /** True when the device found a mistake and the solver wrote a corrected solution. */
+  repaired?: boolean;
+  /** Every model call behind this aid, in order: the first attempt and, if any, the correction. */
+  attempts?: Receipt[];
+  /** Concepts from the student's history that the tutor was told about. */
+  memory?: string[];
+}
+
+/** The kinds of picture the device can draw under a solution, as in an animated math video. */
+export type VisualKind = 'graph' | 'intersection' | 'area' | 'tangent' | 'unit_circle' | 'parametric';
+
+export interface VisualSpec {
+  kind: VisualKind;
+  /** A function of x; x(t) for a curve; "sin", "cos" or "tan" for the unit circle. */
+  f: string;
+  /** The second function, or y(t) for a curve. */
+  g?: string;
+  /** The start of an interval, the point of a tangent, or the angle on the unit circle. */
+  a?: number;
+  b?: number;
 }
 
 export type ReviewResult = 'remembered' | 'needed_help';

@@ -14,6 +14,8 @@ import { Icon, type IconName } from './Icon';
 import { MathText } from './MathText';
 import { go, goBack } from './router';
 import { SolutionSteps } from './SolutionSteps';
+import { AgentTrace } from './Agent';
+import { useLocalModel } from './localModelHooks';
 import { Sheet } from './Sheet';
 
 const KINDS: NoteKind[] = ['board', 'formula', 'exercise', 'question', 'other'];
@@ -213,8 +215,9 @@ function LinkCard({ link }: { link: NonNullable<StudyAid['link']> }) {
   );
 }
 
-function AidCard({ aid, isLadder, showLink }: { aid: StudyAid; isLadder: boolean; showLink: boolean }) {
+function AidCard({ aid, capture, isLadder, showLink }: { aid: StudyAid; capture: Capture; isLadder: boolean; showLink: boolean }) {
   const { t } = useI18n();
+  const isSolution = isLadder && aid.level === MAX_LEVEL;
   return (
     <article className="aid">
       <h3>
@@ -223,8 +226,13 @@ function AidCard({ aid, isLadder, showLink }: { aid: StudyAid; isLadder: boolean
         </span>
         {isLadder ? t(`ladder.${aid.level}` as MessageKey) : t(`action.${aid.action}`)}
       </h3>
-      {isLadder && aid.level === MAX_LEVEL ? <SolutionSteps text={aid.body} plot={aid.plot} /> : <MathText text={aid.body} />}
+      {isSolution ? (
+        <SolutionSteps text={aid.body} plot={aid.plot} visual={aid.visual} check={aid.check} repaired={aid.repaired} />
+      ) : (
+        <MathText text={aid.body} />
+      )}
       {showLink && aid.link && <LinkCard link={aid.link} />}
+      {isSolution && aid.attempts && <AgentTrace capture={capture} aid={aid} />}
       <ReceiptLine receipt={aid.receipt} />
     </article>
   );
@@ -233,6 +241,7 @@ function AidCard({ aid, isLadder, showLink }: { aid: StudyAid; isLadder: boolean
 function HelpPanel({ capture }: { capture: Capture }) {
   const { t } = useI18n();
   const device = useDevice();
+  const local = useLocalModel();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConsent, setNeedsConsent] = useState(false);
@@ -299,6 +308,7 @@ function HelpPanel({ capture }: { capture: Capture }) {
         <AidCard
           key={aid.id}
           aid={aid}
+          capture={capture}
           isLadder={isLadder}
           showLink={Boolean(aid.link) && newestWithLink.get(aid.link!.captureId) === aid.id}
         />
@@ -316,7 +326,11 @@ function HelpPanel({ capture }: { capture: Capture }) {
       {canAsk && (
         <button className={`btn btn-wide ${aids.length === 0 ? 'btn-primary' : 'btn-ghost'}`} onClick={ask} disabled={busy}>
           <Icon name="spark" />
-          {busy ? (device.text === 'ready' ? t('detail.thinkingDevice') : t('detail.thinking')) : askLabel}
+          {busy
+            ? (device.text === 'ready' || local.state === 'ready') && !(isLadder && nextLevel >= MAX_LEVEL)
+              ? t('detail.thinkingDevice')
+              : t('detail.thinking')
+            : askLabel}
         </button>
       )}
       {(capture.kind === 'board' || capture.kind === 'other' || capture.kind === 'formula') && aids.length === 0 && (

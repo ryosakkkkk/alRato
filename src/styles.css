@@ -1,7 +1,8 @@
 /*
  * alRato design tokens. The brief behind them is docs/design/DESIGN_BRIEF.md.
- * Dark is the default, like a blackboard and the math videos it imitates: near-black, never navy,
- * with soft violet, pink and cyan light. The light theme (Your AI > Appearance) is a pastel sky.
+ * White is the default: clean paper with soft violet, pink and cyan light, ink titles and glass cards.
+ * The blackboard where solutions are written stays dark in both themes, like the math videos it imitates.
+ * The dark theme (Your AI > Appearance) is near-black, never navy.
  */
 :root {
   color-scheme: dark;
@@ -16,7 +17,9 @@
   --streak: rgb(255 255 255 / 0.035);
   --ink: #f5f5fa;
   --ink-soft: #a5a5bb;
+  --title: #ffffff;
   --title-shadow: 0 0 42px rgb(167 139 250 / 0.35);
+  --backdrop: rgb(0 0 0 / 0.55);
   --glass: rgb(255 255 255 / 0.055);
   --glass-strong: rgb(20 20 28 / 0.72);
   --edge: rgb(255 255 255 / 0.1);
@@ -57,47 +60,54 @@
   --tabbar: 64px;
 }
 
+/* White, the default: paper-white with faint colour, near-black ink and white glass. */
 :root[data-theme='light'] {
   color-scheme: light;
-  --sky: linear-gradient(172deg, #7f9fe0 0%, #a9aceb 28%, #c4b4ee 50%, #efc1df 78%, #f7d6d9 100%);
-  --paper: #c3b8f0;
-  --glow-1: rgb(255 255 255 / 0.75);
-  --glow-2: rgb(255 205 232 / 0.9);
-  --glow-3: rgb(110 146 232 / 0.85);
-  --streak: rgb(255 255 255 / 0.5);
-  --ink: #1d1a45;
-  --ink-soft: #55537e;
-  --title-shadow: 0 1px 2px rgb(52 40 120 / 0.3), 0 10px 34px rgb(70 50 160 / 0.4);
-  --glass: rgb(255 255 255 / 0.5);
-  --glass-strong: rgb(255 255 255 / 0.74);
-  --edge: rgb(255 255 255 / 0.85);
-  --edge-soft: rgb(29 26 69 / 0.14);
-  --chip: rgb(29 26 69 / 0.07);
-  --field: rgb(255 255 255 / 0.78);
-  --lens: rgb(255 255 255 / 0.9);
-  --tag-bg: rgb(255 255 255 / 0.55);
-  --accent: #5b3fd6;
-  --accent-hover: #4a2fc2;
-  --accent-soft: rgb(91 63 214 / 0.12);
-  --cta: #1d1a45;
+  --sky:
+    radial-gradient(75% 45% at 100% 0%, rgb(167 139 250 / 0.16), transparent 70%),
+    radial-gradient(65% 40% at 0% 100%, rgb(244 114 182 / 0.11), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #f6f6f9 100%);
+  --paper: #f7f7fa;
+  --glow-1: rgb(196 181 253 / 0.34);
+  --glow-2: rgb(251 207 232 / 0.42);
+  --glow-3: rgb(165 243 252 / 0.3);
+  --streak: rgb(255 255 255 / 0.7);
+  --ink: #0d0d14;
+  --ink-soft: #5b5b6e;
+  --title: #0d0d14;
+  --title-shadow: none;
+  --backdrop: rgb(13 13 20 / 0.3);
+  --glass: rgb(255 255 255 / 0.62);
+  --glass-strong: rgb(255 255 255 / 0.88);
+  --edge: rgb(13 13 20 / 0.08);
+  --edge-soft: rgb(13 13 20 / 0.13);
+  --chip: rgb(13 13 20 / 0.06);
+  --field: #ffffff;
+  --lens: #ffffff;
+  --tag-bg: rgb(13 13 20 / 0.06);
+  --accent: #6d28d9;
+  --accent-hover: #5b21b6;
+  --accent-soft: rgb(109 40 217 / 0.1);
+  --lemon: #f1ea62;
+  --cta: #0d0d14;
   --cta-ink: #ffffff;
-  --cta-ring: rgb(255 255 255 / 0.4);
+  --cta-ring: rgb(13 13 20 / 0.06);
   --mint: #047857;
-  --mint-soft: rgb(16 185 129 / 0.16);
+  --mint-soft: rgb(16 185 129 / 0.12);
   --amber: #a14a05;
-  --amber-soft: rgb(245 158 11 / 0.22);
+  --amber-soft: rgb(245 158 11 / 0.16);
   --rose: #be123c;
-  --rose-soft: rgb(244 63 94 / 0.14);
-  --tone-exercise: rgb(199 238 219 / 0.84);
-  --tone-formula: rgb(248 243 184 / 0.88);
-  --tone-board: rgb(221 214 254 / 0.86);
-  --tone-question: rgb(251 211 231 / 0.86);
-  --tone-other: rgb(255 255 255 / 0.72);
-  --board: #0a0d1c;
-  --board-top: #1d2650;
-  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.85), 0 22px 44px -26px rgb(40 30 110 / 0.5), 0 2px 6px rgb(40 30 110 / 0.06);
-  --shadow-lift: 0 30px 60px -28px rgb(40 30 110 / 0.6);
-  --focus: #5b3fd6;
+  --rose-soft: rgb(244 63 94 / 0.1);
+  --tone-exercise: rgb(220 247 234 / 0.9);
+  --tone-formula: rgb(252 247 205 / 0.92);
+  --tone-board: rgb(237 233 254 / 0.92);
+  --tone-question: rgb(252 231 243 / 0.92);
+  --tone-other: rgb(255 255 255 / 0.9);
+  --board: #0b0b12;
+  --board-top: #1c1c2c;
+  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(13 13 20 / 0.05), 0 14px 34px -20px rgb(13 13 20 / 0.24);
+  --shadow-lift: 0 26px 52px -26px rgb(13 13 20 / 0.32), 0 2px 6px rgb(13 13 20 / 0.04);
+  --focus: #6d28d9;
 }
 
 * { box-sizing: border-box; }
@@ -129,7 +139,7 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 /* The sky: a fixed gradient with soft glows and one diagonal streak of light. */
 .aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--sky); }
 .aurora span { position: absolute; border-radius: 50%; filter: blur(70px); will-change: transform; animation: drift 28s ease-in-out infinite alternate; }
-/* The white glow stays away from the top, where the white titles sit; a deeper blue sits behind them instead. */
+/* The brightest glow stays away from the top, where the titles sit. */
 .aurora span:nth-child(1) { width: 56vmax; height: 56vmax; top: 38vh; right: -34vmax; background: var(--glow-1); }
 .aurora span:nth-child(2) { width: 56vmax; height: 56vmax; bottom: -30vmax; right: -20vmax; background: var(--glow-2); animation-duration: 33s; animation-delay: -9s; }
 .aurora span:nth-child(3) { width: 60vmax; height: 60vmax; top: -26vmax; left: -22vmax; background: var(--glow-3); animation-duration: 30s; animation-delay: -15s; }
@@ -167,8 +177,8 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 }
 @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-/* Titles: the big ones sit on the sky in white; reading text stays dark inside cards. */
-.page-title, .display-title, .hero h2 { color: #fff; text-shadow: var(--title-shadow); letter-spacing: -0.04em; line-height: 1.02; }
+/* Titles: big and tight, in the theme's title colour (ink on white, white on black). */
+.page-title, .display-title, .hero h2 { color: var(--title); text-shadow: var(--title-shadow); letter-spacing: -0.04em; line-height: 1.02; }
 .page-title { font-size: clamp(2.4rem, 9vw, 3.1rem); font-weight: 750; }
 .display-title { font-size: clamp(2.6rem, 11vw, 3.6rem); font-weight: 750; }
 .section-title { font-size: 1.3rem; letter-spacing: -0.025em; }
@@ -291,8 +301,9 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 .hero em {
   font-family: var(--serif); font-style: italic; font-weight: 500; white-space: nowrap; letter-spacing: -0.02em;
 }
-.hero p { color: var(--ink); font-size: 1.05rem; }
-.hero .hero-note { font-size: 0.88rem; color: var(--ink-soft); }
+/* Only the hero's own paragraphs: the board inside it keeps its chalk colours. */
+.hero > p { color: var(--ink); font-size: 1.05rem; }
+.hero > .hero-note { font-size: 0.88rem; color: var(--ink-soft); }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .hero-actions .btn { flex: 1 1 auto; }
 .how { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 0; padding: 0; list-style: none; counter-reset: how; }
@@ -416,22 +427,154 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 .topbar h1 { flex: 1; min-width: 0; font-size: 1.45rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar-right { display: flex; min-width: 46px; }
 
-/* Capture */
-.viewfinder {
-  position: relative; aspect-ratio: 4 / 3.4; border-radius: var(--r-l); overflow: hidden;
-  background: #0b0d1f; color: #fff; border: 1px solid var(--edge); box-shadow: var(--shadow-lift);
+/*
+ * Capture: a full-screen camera, always dark like a camera app. The frame dims everything around it
+ * with one huge shadow; its pink corners can be dragged. On a computer it sits in the page instead.
+ */
+.shell-camera .tabbar { display: none; }
+.cam {
+  --cam-glass: rgb(22 22 28 / 0.56);
+  --cam-edge: rgb(255 255 255 / 0.16);
+  position: fixed; inset: 0; z-index: 40; overflow: hidden; isolation: isolate;
+  background: #000; color: #fff; color-scheme: dark;
 }
-.viewfinder video { width: 100%; height: 100%; object-fit: cover; }
-.viewfinder-note {
-  position: absolute; inset: 0 0 96px 0; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 10px; padding: 20px; text-align: center;
-  background: linear-gradient(160deg, #1e1b4b, #0b0d1f 60%, #3b0764);
+.cam-stage { position: absolute; inset: 0; overflow: hidden; }
+.cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-frame {
+  position: absolute; z-index: 1; border-radius: 18px;
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 0.46), inset 0 0 0 1px rgb(255 255 255 / 0.22);
+  transition: left 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.capture-controls {
-  position: absolute; inset: auto 0 0 0; height: 96px; display: flex; align-items: center;
-  justify-content: space-between; padding: 0 28px;
-  background: rgb(12 14 36 / 0.5); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%);
+.cam-frame.dragging { transition: none; }
+.cam-sweep {
+  position: absolute; left: 5%; right: 5%; top: 0; height: 2px; border-radius: 2px; overflow: hidden;
+  background: linear-gradient(90deg, transparent, #f472b6, #ff4d6d, transparent); box-shadow: 0 0 14px #f472b6;
+  animation: scan-line 2.6s ease-in-out infinite;
 }
+.cam-corner { position: absolute; width: 46px; height: 46px; touch-action: none; cursor: nwse-resize; }
+.cam-corner::before {
+  content: ''; position: absolute; width: 30px; height: 30px; border: 4px solid #ff4d6d;
+  filter: drop-shadow(0 0 8px rgb(255 77 109 / 0.55));
+}
+.cam-corner.tl { left: -15px; top: -15px; }
+.cam-corner.tr { right: -15px; top: -15px; cursor: nesw-resize; }
+.cam-corner.bl { left: -15px; bottom: -15px; cursor: nesw-resize; }
+.cam-corner.br { right: -15px; bottom: -15px; }
+.cam-corner.tl::before { left: 13px; top: 13px; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
+.cam-corner.tr::before { right: 13px; top: 13px; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
+.cam-corner.bl::before { left: 13px; bottom: 13px; border-right: 0; border-top: 0; border-bottom-left-radius: 18px; }
+.cam-corner.br::before { right: 13px; bottom: 13px; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
+.cam-hint {
+  position: absolute; z-index: 1; left: 50%; transform: translateX(-50%); margin-top: 16px;
+  max-width: calc(100% - 32px); width: max-content; padding: 7px 14px; border-radius: 999px; text-align: center;
+  background: var(--cam-glass); font-size: 0.86rem; font-weight: 600;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+
+.cam-top {
+  position: absolute; z-index: 3; top: 0; left: 0; right: 0;
+  display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; align-items: center; gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top)) 14px 14px;
+  background: linear-gradient(rgb(0 0 0 / 0.5), transparent);
+}
+.cam-icon, .cam .round-btn {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; color: #fff;
+  background: var(--cam-glass); border: 1px solid var(--cam-edge);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.cam-icon:active, .cam .round-btn:active:not(:disabled) { transform: scale(0.92); }
+.cam-icon[aria-pressed="true"] { background: #fde047; color: #111; border-color: transparent; }
+.cam-icon-spacer { width: 46px; }
+.cam-modes {
+  justify-self: center; display: inline-flex; padding: 4px; border-radius: 999px; max-width: 100%;
+  background: var(--cam-glass); border: 1px solid var(--cam-edge);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.cam-modes button {
+  padding: 8px 16px; border-radius: 999px; font-weight: 650; font-size: 0.9rem; color: rgb(255 255 255 / 0.78);
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.cam-modes button[aria-checked="true"] { background: #fff; color: #0b0b12; }
+
+.cam-bottom {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: stretch; gap: 14px;
+  padding: 34px 18px calc(22px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.62) 38%);
+}
+.cam-extras { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.cam-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px 6px 12px; border-radius: 999px;
+  background: var(--cam-glass); border: 1px solid var(--cam-edge); color: #fff; font-size: 0.86rem; font-weight: 650;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.cam-chip.active { border-color: rgb(244 114 182 / 0.7); }
+.cam-chip.toggle { align-items: center; padding-left: 7px; }
+.cam-chip .toggle-track { width: 38px; height: 24px; margin: 0; background: rgb(255 255 255 / 0.22); }
+.cam-chip .toggle-track::after { top: 3px; left: 3px; width: 18px; height: 18px; }
+.cam-chip input:checked + .toggle-track::after { transform: translateX(14px); }
+.cam-chip .toggle-text strong { font-size: 0.86rem; gap: 5px; }
+.cam-input {
+  width: 100%; padding: 12px 16px; border-radius: 16px; font-size: 1rem; color: #fff;
+  background: rgb(0 0 0 / 0.5); border: 1px solid rgb(255 255 255 / 0.24);
+}
+.cam-input::placeholder { color: rgb(255 255 255 / 0.55); }
+.cam-controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 6px; }
+.cam-controls > :first-child { justify-self: start; }
+.cam-controls > :last-child { justify-self: end; }
+.cam .round-btn { width: 52px; height: 52px; }
+.cam .shutter { width: 76px; height: 76px; }
+.cam-toast {
+  align-self: center; max-width: 100%; padding: 8px 16px; border-radius: 16px; text-align: center;
+  background: rgb(225 29 72 / 0.92); color: #fff; font-weight: 650; font-size: 0.88rem;
+}
+
+/* What the camera area shows before the picture: a word on why, or how to turn the camera back on. */
+.cam-panel {
+  position: absolute; inset: 0; z-index: 2; display: grid; place-items: center;
+  padding: calc(84px + env(safe-area-inset-top)) 20px calc(190px + env(safe-area-inset-bottom));
+  background: radial-gradient(90% 60% at 50% 28%, #1d1830 0%, #050507 72%);
+}
+.cam-panel-busy { z-index: 4; background: rgb(0 0 0 / 0.55); }
+.cam-card {
+  width: min(400px, 100%); display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center;
+  padding: 26px 22px; border-radius: 28px;
+  background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.12);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.cam-card h2 { font-size: 1.35rem; letter-spacing: -0.02em; }
+.cam-card p { color: rgb(255 255 255 / 0.72); font-size: 0.93rem; }
+.cam-card .cam-lead { color: #fff; font-size: 1.02rem; font-weight: 650; }
+.cam-card .btn-primary { background: #fff; color: #0b0b12; box-shadow: 0 0 0 4px rgb(255 255 255 / 0.12), 0 18px 34px -16px rgb(0 0 0 / 0.6); }
+.cam-card .text-link { color: #d8ccff; text-decoration-color: rgb(216 204 255 / 0.4); }
+.cam-tile {
+  display: grid; place-items: center; width: 66px; height: 66px; border-radius: 22px; color: #fff; background: var(--grad);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 16px 30px -12px rgb(139 92 246 / 0.9);
+}
+.cam-tile-off { background: linear-gradient(135deg, #52525b, #27272a); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.cam-status {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px;
+  background: var(--cam-glass); font-weight: 650; font-size: 0.95rem;
+}
+.cam-spinner {
+  width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgb(255 255 255 / 0.25); border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.cam-flash { position: absolute; inset: 0; z-index: 5; background: #fff; pointer-events: none; animation: cam-flash 0.4s ease-out forwards; }
+@keyframes cam-flash { from { opacity: 0.9; } to { opacity: 0; } }
+
+@media (min-width: 960px) {
+  .cam-screen { max-width: 980px; margin: 0 auto; }
+  .cam { position: relative; inset: auto; z-index: 0; height: min(82dvh, 800px); border-radius: var(--r-l); box-shadow: var(--shadow-lift); }
+  .cam-top { padding-top: 16px; }
+  .cam-bottom { padding-bottom: 22px; }
+  .cam-panel { padding: 84px 20px 190px; }
+}
+
 .shutter {
   width: 68px; height: 68px; border-radius: 50%; background: #ff4d6d;
   box-shadow: 0 0 0 4px rgb(255 255 255 / 0.9), 0 0 0 9px rgb(255 255 255 / 0.18), 0 12px 30px rgb(0 0 0 / 0.45);
@@ -443,7 +586,6 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
   display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; color: #fff;
   background: rgb(255 255 255 / 0.12); border: 1px solid rgb(255 255 255 / 0.3);
 }
-.round-spacer { width: 48px; }
 
 /* Scanning: corner brackets and a sweeping line, over a photo or the live camera */
 .scan { position: absolute; inset: 12%; pointer-events: none; }
@@ -462,7 +604,6 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
   box-shadow: 0 0 16px #f472b6;
   animation: scan-line 2.4s ease-in-out infinite;
 }
-.scan-camera { inset: 14% 12% 116px; }
 @keyframes scan-line {
   0%, 100% { top: 0; opacity: 0.35; }
   50% { top: calc(100% - 2px); opacity: 1; }
@@ -606,6 +747,7 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
   animation: pop 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: var(--d);
 }
 .step-final .step-no { background: linear-gradient(135deg, #34d399, #06b6d4); box-shadow: 0 8px 18px -8px rgb(16 185 129 / 0.9); }
+.step-miss .step-no { background: linear-gradient(135deg, #fb7185, #e11d48); box-shadow: 0 8px 18px -8px rgb(225 29 72 / 0.9); }
 .step-body {
   position: relative; min-width: 0; padding: 4px 8px; margin: -4px -8px 0; border-radius: 12px;
   display: flex; flex-direction: column; gap: 4px;
@@ -628,6 +770,7 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
   background: rgb(16 185 129 / 0.12); box-shadow: inset 0 0 0 1.5px rgb(52 211 153 / 0.7), 0 0 26px -6px rgb(52 211 153 / 0.6);
   animation: box-in 0.45s ease both; animation-delay: var(--d);
 }
+.step-miss .step-body { background: rgb(244 63 94 / 0.12); box-shadow: inset 0 0 0 1.5px rgb(251 113 133 / 0.7), 0 0 26px -6px rgb(244 63 94 / 0.6); }
 @keyframes box-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 /* The first line of a home-example step is its label: smaller, the math below it is the star. */
 .board .step-body > .math-text:first-child:not(:last-child), .demo-label { font-size: 0.86rem; color: #b9bde6; font-weight: 600; }
@@ -703,6 +846,92 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
   animation-delay: calc(var(--total, 0s) + 1.2s + var(--i, 0) * 0.25s);
 }
 
+/*
+ * The other pictures a solver can ask for. Like the graph, they wait for the board to be written:
+ * rectangles rise and become an area, secants flash and settle into a tangent, a second curve joins.
+ */
+.graph .curve-2 { animation-delay: calc(var(--total, 0s) + 0.45s); }
+.graph .riemann {
+  fill: rgb(56 189 248 / 0.22); stroke: rgb(56 189 248 / 0.75); stroke-width: 1;
+  transform-box: fill-box; transform-origin: bottom;
+  animation: bar-rise 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both, bar-dim 0.6s ease forwards;
+  animation-delay: calc(var(--total, 0s) + 0.9s + var(--i, 0) * 0.12s), calc(var(--total, 0s) + 2.6s);
+}
+.graph .riemann.neg { transform-origin: top; }
+.graph .area-fill { fill: rgb(167 139 250 / 0.4); opacity: 0; animation: ink-fade 0.8s ease forwards; animation-delay: calc(var(--total, 0s) + 2.2s); }
+.graph .bound { stroke: rgb(255 255 255 / 0.4); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0; animation: ink-fade 0.5s ease forwards; animation-delay: calc(var(--total, 0s) + 0.6s); }
+.graph .label {
+  fill: #fff; font: 700 13px var(--sans); text-anchor: middle; paint-order: stroke; stroke: #000; stroke-width: 3px;
+  opacity: 0; animation: ink-fade 0.5s ease forwards; animation-delay: calc(var(--total, 0s) + 2.7s);
+}
+.graph .label.still { opacity: 1; animation: none; }
+.graph .secant {
+  stroke: rgb(253 224 71 / 0.85); stroke-width: 1.6; opacity: 0;
+  animation: flash-line 0.75s ease both; animation-delay: calc(var(--total, 0s) + 1s + var(--i, 0) * 0.55s);
+}
+.graph .tangent-line {
+  stroke: #fde047; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: draw-in 0.9s ease-out forwards; animation-delay: calc(var(--total, 0s) + 2.7s);
+}
+.graph .point { fill: #f472b6; stroke: #000; stroke-width: 2; }
+.unit .ring { fill: none; stroke: rgb(255 255 255 / 0.38); stroke-width: 1.5; }
+.unit .wave { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.unit .radius { stroke: #a78bfa; stroke-width: 2.2; stroke-linecap: round; }
+.unit .bar-sin { stroke: #22d3ee; stroke-width: 3.2; stroke-linecap: round; }
+.unit .bar-cos { stroke: #fde047; stroke-width: 3.2; stroke-linecap: round; }
+.unit .link { stroke: rgb(255 255 255 / 0.5); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.unit .arc { fill: none; stroke: #f472b6; stroke-width: 1.6; }
+@keyframes bar-rise { from { transform: scaleY(0); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes bar-dim { to { opacity: 0.35; } }
+@keyframes flash-line { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+.shown .graph .riemann { animation: none; opacity: 0.35; }
+.shown .graph .area-fill, .shown .graph .bound, .shown .graph .label { animation: none; opacity: 1; }
+.shown .graph .secant { animation: none; opacity: 0; }
+.shown .graph .tangent-line { animation: none; stroke-dashoffset: 0; }
+
+/* A result the device could prove wrong: said plainly, in rose. */
+.answer-check.answer-miss { color: #ffe4e6; background: rgb(244 63 94 / 0.14); box-shadow: inset 0 0 0 1px rgb(251 113 133 / 0.55); }
+.answer-miss strong { color: #fda4af; }
+.answer-miss .answer-check-mark { background: linear-gradient(135deg, #fb7185, #f43f5e); color: #fff; }
+
+/*
+ * How the agent solved it: one line per step, like a list of tool calls, each with where it ran.
+ * Green for this device, violet for the cloud. The lines appear one after another.
+ */
+.trace { border-radius: var(--r-m); background: var(--chip); padding: 4px 14px; }
+.trace summary {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; cursor: pointer; list-style: none;
+  font-weight: 700; font-size: 0.95rem;
+}
+.trace summary::-webkit-details-marker { display: none; }
+.trace summary::after { content: '▾'; margin-left: auto; color: var(--ink-soft); transition: transform 0.2s ease; }
+.trace:not([open]) summary::after { transform: rotate(-90deg); }
+.trace summary small { color: var(--ink-soft); font-weight: 600; font-size: 0.8rem; }
+.trace-steps { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.trace-step {
+  position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 6px 0;
+  animation: rise-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 0.12s);
+}
+.trace-step:not(:last-child)::before {
+  content: ''; position: absolute; left: 13px; top: 32px; bottom: -6px; width: 2px; border-radius: 2px; background: var(--edge-soft);
+}
+.trace-icon {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: #fff;
+  background: linear-gradient(135deg, #a78bfa, #f472b6); box-shadow: 0 6px 14px -8px rgb(139 92 246 / 0.9);
+}
+.where-on_device .trace-icon { background: linear-gradient(135deg, #34d399, #06b6d4); box-shadow: 0 6px 14px -8px rgb(16 185 129 / 0.9); }
+.where-you .trace-icon { background: linear-gradient(135deg, #fde047, #fb923c); }
+.trace-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.trace-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.trace-head strong { font-size: 0.92rem; }
+.trace-where {
+  padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  color: var(--accent); background: var(--accent-soft);
+}
+.where-on_device .trace-where { color: var(--mint); background: var(--mint-soft); }
+.where-you .trace-where { color: var(--amber); background: var(--amber-soft); }
+.trace-body small { color: var(--ink-soft); font-size: 0.82rem; overflow-wrap: anywhere; }
+
 /* Solve demo on the home screen */
 .solve-demo {
   display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: var(--r-l);
@@ -764,13 +993,30 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 .segmented button { padding: 8px 18px; border-radius: 999px; font-weight: 650; font-size: 0.92rem; color: var(--ink-soft); }
 .segmented button.active { background: var(--lens); color: var(--ink); box-shadow: var(--shadow); }
 
+/* Your agent: each role, the model that does it and where. Same rows as the trace under a solution. */
+.roles { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.role { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+
+/* What alRato learned: one bar per concept, rose while it is hard, green once it is known. */
+.skills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.skill { display: flex; flex-direction: column; gap: 5px; }
+.skill-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.skill-head strong { font-size: 0.95rem; overflow-wrap: anywhere; }
+.skill-head small { flex: none; font-size: 0.78rem; font-weight: 700; color: var(--ink-soft); }
+.skill-bar { display: block; height: 8px; border-radius: 999px; background: var(--chip); overflow: hidden; }
+.skill-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a78bfa, #f472b6); transition: width 0.6s ease; }
+.skill-hard .skill-bar span { background: linear-gradient(90deg, #fb7185, #f43f5e); }
+.skill-hard .skill-head small { color: var(--rose); }
+.skill-easy .skill-bar span { background: linear-gradient(90deg, #34d399, #06b6d4); }
+.skill-easy .skill-head small { color: var(--mint); }
+
 /* Sheet */
 .sheet {
   width: min(480px, calc(100vw - 24px)); padding: 0; border: 1px solid var(--edge); border-radius: var(--r-l);
   background: var(--glass-strong); color: var(--ink); box-shadow: var(--shadow-lift);
   backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
 }
-.sheet::backdrop { background: rgb(20 18 60 / 0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.sheet::backdrop { background: var(--backdrop); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .sheet-body { display: flex; flex-direction: column; gap: 14px; padding: 22px; }
 .sheet h2 { font-size: 1.3rem; }
 @media (max-width: 959px) {
@@ -812,7 +1058,7 @@ code { font-size: 0.85em; background: var(--chip); padding: 1px 6px; border-radi
 }
 .splash-word {
   font-family: var(--serif); font-style: italic; font-size: 2.8rem; font-weight: 600; letter-spacing: -0.02em;
-  color: #fff; text-shadow: var(--title-shadow);
+  color: var(--title); text-shadow: var(--title-shadow);
   animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.55s both;
 }
 @keyframes splash-pop { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: none; } }

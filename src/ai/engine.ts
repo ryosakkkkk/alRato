@@ -15,7 +15,8 @@ import { getLang, getPreference } from '../core/settings';
 import type { AiTask, InferenceOrigin, Lang, Receipt, RouteReason } from '../core/types';
 import { firebaseApp, isCloudConfigured } from '../firebase/app';
 import { remote } from '../firebase/remoteConfig';
-import { expectedIO, hasPromptApi, isMeteredConnection, refreshDevice, reportDownloadProgress } from './device';
+import { expectedIO, hasPromptApi, isMeteredConnection, refreshDevice, reportDownloadProgress, type DeviceState } from './device';
+import { localGenerate, localModelReady, localReceiptModel } from './localModel';
 import { AlRatoAiError, classifyError, WaitForRoute, type AiFailure } from './errors';
 import { allModelsExhausted, isModelExhausted, markModelExhausted } from './quota';
 import { isAppCheckPaused, pauseCloudForAppCheck } from './appcheck';
@@ -43,8 +44,12 @@ export function cloudModels(setting: string): string[] {
     .filter(Boolean);
 }
 
-const modelsFor = (task: AiTask): string[] =>
-  cloudModels(task === 'read' ? remote().model_vision : remote().model_text);
+/**
+ * Each role gets the model it is best at: reading photos and organizing notes go to fast vision and
+ * text models, and a full worked solution goes to the strongest reasoning model first.
+ */
+const modelsFor = (task: AiTask, deepReasoning = false): string[] =>
+  cloudModels(task === 'read' ? remote().model_vision : deepReasoning ? remote().model_reasoning : remote().model_text);
 
 function withDeadline<T>(work: Promise<T>, ms: number, failure: AiFailure): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
@@ -223,7 +228,27 @@ async function attempt<T>(
   parts: Part[],
   lang: Lang,
   cloudModel: string,
+  local: boolean,
 ): Promise<Attempt> {
+  // On a phone, the text tasks the router gives the device go to the local model (WebGPU).
+  if (local && (mode === InferenceMode.ONLY_ON_DEVICE || mode === InferenceMode.PREFER_ON_DEVICE)) {
+    const started = performance.now();
+    const rawText = await withDeadline(
+      localGenerate({
+        system: req.system,
+        prompt: req.prompt,
+        schema: req.schema,
+        maxTokens: req.maxOutputTokens,
+        temperature: req.task === 'help' ? 0.4 : 0.1,
+      }),
+      DEVICE_TIMEOUT_MS,
+      'device_failed',
+    ).catch((error: unknown) => {
+      // Whatever went wrong on the GPU, it is a device failure: the router may then try the cloud.
+      throw error instanceof AlRatoAiError ? error : new AlRatoAiError('device_failed', String(error));
+    });
+    return { rawText, source: 'on_device', latencyMs: Math.round(performance.now() - started), model: localReceiptModel() };
+  }
   assertOnDevicePossible(mode);
   if (mode !== InferenceMode.ONLY_ON_DEVICE && req.stillPublic && !(await req.stillPublic())) {
     throw new AlRatoAiError('stale', 'The note became private before the request was sent');
@@ -254,7 +279,7 @@ async function attempt<T>(
   if ((req.isPrivate || mode === InferenceMode.ONLY_ON_DEVICE) && source !== 'on_device') {
     throw new AlRatoAiError('privacy_gate', 'A device-only request was answered by the cloud');
   }
-  return { rawText, source, latencyMs: Math.round(performance.now() - started), model: cloudModel };
+  return { rawText, source, latencyMs: Math.round(performance.now() - started), model: source === 'on_device' ? 'gemini-nano' : cloudModel };
 }
 
 /**
@@ -266,17 +291,18 @@ async function attemptWithBackups<T>(
   mode: InferenceMode,
   parts: Part[],
   lang: Lang,
+  local: boolean,
 ): Promise<Attempt> {
-  const chain = modelsFor(req.task);
+  const chain = modelsFor(req.task, req.deepReasoning);
   if (mode === InferenceMode.ONLY_ON_DEVICE) {
-    return attempt(req, mode, parts, lang, chain[0] ?? '');
+    return attempt(req, mode, parts, lang, chain[0] ?? '', local);
   }
   const models = chain.filter((model) => !isModelExhausted(model));
   if (models.length === 0) throw new WaitForRoute('cloud_cap_no_model');
   let last: AlRatoAiError | undefined;
   for (const model of models) {
     try {
-      return await attempt(req, mode, parts, lang, model);
+      return await attempt(req, mode, parts, lang, model, local);
     } catch (error) {
       if (error instanceof WaitForRoute) throw error;
       last = classifyError(error);
@@ -295,13 +321,17 @@ async function attemptWithBackups<T>(
 export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResult<T>> {
   const lang = getLang();
   const device = await refreshDevice(lang);
-  const chain = modelsFor(req.task);
+  const chain = modelsFor(req.task, req.deepReasoning);
+  // Gemini Nano for this modality, or else the phone's local model, which reads text only.
+  const nano: DeviceState = req.image ? device.vision : device.text;
+  const local = !req.image && nano !== 'ready' && localModelReady();
+  const onDevice: DeviceState = local ? 'ready' : nano;
   const decision = decideRoute({
     task: req.task,
     isPrivate: req.isPrivate,
     online: navigator.onLine,
     metered: isMeteredConnection(),
-    device: req.image ? device.vision : device.text,
+    device: onDevice,
     cloudConfigured: isCloudConfigured,
     cloudConsent: getCloudConsent(),
     cloudCapReached: (await cloudCallsToday()) >= remote().daily_cloud_cap || allModelsExhausted(chain),
@@ -325,10 +355,10 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
   let reason: RouteReason = decision.reason;
   let result: Attempt;
 
-  const deviceReady = (req.image ? device.vision : device.text) === 'ready';
+  const deviceReady = onDevice === 'ready';
 
   try {
-    result = await attemptWithBackups(req, mode, parts, lang);
+    result = await attemptWithBackups(req, mode, parts, lang, local);
   } catch (error) {
     if (error instanceof WaitForRoute) throw error;
     const failure = classifyError(error);
@@ -337,21 +367,21 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
       // The SDK does not fall back when the on-device call itself fails, so we do.
       mode = InferenceMode.ONLY_IN_CLOUD;
       reason = 'device_failed_fallback';
-      result = await attemptWithBackups(req, mode, parts, lang);
+      result = await attemptWithBackups(req, mode, parts, lang, local);
     } else if (failure.failure === 'app_check') {
       // App Check refused this browser. Pause the cloud here, and finish this note on the device when it can.
       pauseCloudForAppCheck();
       if (mode === InferenceMode.ONLY_ON_DEVICE || !deviceReady) throw failure;
       mode = InferenceMode.ONLY_ON_DEVICE;
       reason = 'no_cloud';
-      result = await attempt(req, mode, parts, lang, chain[0] ?? '').catch((e) => {
+      result = await attempt(req, mode, parts, lang, chain[0] ?? '', local).catch((e) => {
         throw classifyError(e);
       });
     } else if (failure.transient && mode === InferenceMode.PREFER_IN_CLOUD && deviceReady) {
       // Every cloud model is down or slow, and the SDK only rescues some of those errors.
       mode = InferenceMode.ONLY_ON_DEVICE;
       reason = 'no_cloud';
-      result = await attempt(req, mode, parts, lang, chain[0] ?? '').catch((e) => {
+      result = await attempt(req, mode, parts, lang, chain[0] ?? '', local).catch((e) => {
         throw classifyError(e);
       });
     } else {
@@ -367,7 +397,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
     if (result.source !== 'on_device' || !canRetryInCloud()) throw classifyError(error);
     mode = InferenceMode.ONLY_IN_CLOUD;
     reason = 'device_failed_fallback';
-    result = await attemptWithBackups(req, mode, parts, lang);
+    result = await attemptWithBackups(req, mode, parts, lang, local);
     data = req.parse(parseJson(result.rawText));
   }
 
@@ -381,7 +411,7 @@ export async function generate<T>(req: GenerateRequest<T>): Promise<GenerateResu
     latencyMs: result.latencyMs,
     bytesSent: inCloud ? payloadBytes : 0,
     imageSent: inCloud && imageBytes > 0,
-    model: inCloud ? result.model : 'gemini-nano',
+    model: result.model,
     at: Date.now(),
   };
 

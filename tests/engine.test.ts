@@ -10,6 +10,14 @@ import { setCloudConsent } from '../src/core/consent';
 import { db } from '../src/core/db';
 import { firebaseApp } from '../src/firebase/app';
 
+// The phone's local model (WebGPU). Off unless a test turns it on.
+const local = vi.hoisted(() => ({ ready: false, generate: vi.fn() }));
+vi.mock('../src/ai/localModel', () => ({
+  localModelReady: () => local.ready,
+  localGenerate: (...args: unknown[]) => local.generate(...args),
+  localReceiptModel: () => 'gemma-3-1b-webgpu',
+}));
+
 vi.mock('../src/firebase/app', async () => {
   const { initializeApp } = await import('firebase/app');
   return {
@@ -58,6 +66,8 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let online: ReturnType<typeof vi.spyOn>;
 
 beforeEach(async () => {
+  local.ready = false;
+  local.generate = vi.fn(async () => '{"text":"from the phone","legibility":"high"}');
   await db.usage.clear();
   localStorage.clear();
   resetModelCache();
@@ -385,5 +395,44 @@ describe('on-device sessions', () => {
     }
     expect(create).toHaveBeenCalledTimes(3);
     expect(destroy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("the phone's local model (WebGPU)", () => {
+  it('runs a private text task on the phone with nothing sent', async () => {
+    local.ready = true;
+    const { data, receipt } = await generate(request({ isPrivate: true }));
+    expect(data.text).toBe('from the phone');
+    expect(receipt).toMatchObject({ source: 'on_device', model: 'gemma-3-1b-webgpu', bytesSent: 0, reason: 'private_note' });
+    expect(local.generate).toHaveBeenCalledWith(expect.objectContaining({ schema: READ_SCHEMA, system: 'SYSTEM PROMPT' }));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('never gives it a photo: a private photo still waits for a vision model on the device', async () => {
+    local.ready = true;
+    const image = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' });
+    await expect(generate(request({ isPrivate: true, task: 'read', image }))).rejects.toBeInstanceOf(WaitForRoute);
+    expect(local.generate).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('answers everyday hints on the phone first, and falls back to the cloud if it fails', async () => {
+    local.ready = true;
+    const { receipt } = await generate(request({ task: 'help' }));
+    expect(receipt.source).toBe('on_device');
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    local.generate = vi.fn(async () => {
+      throw new Error('out of GPU memory');
+    });
+    const fallback = await generate(request({ task: 'help' }));
+    expect(fallback.receipt).toMatchObject({ source: 'in_cloud', reason: 'device_failed_fallback' });
+  });
+
+  it('leaves a full solution to the strongest cloud model', async () => {
+    local.ready = true;
+    const { receipt } = await generate(request({ task: 'help', deepReasoning: true }));
+    expect(receipt).toMatchObject({ source: 'in_cloud', reason: 'solution_quality', model: 'gemini-3.8-flash' });
+    expect(local.generate).not.toHaveBeenCalled();
   });
 });

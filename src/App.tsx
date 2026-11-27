@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Shell } from './ui/common';
 import { CaptureScreen } from './ui/CaptureScreen';
 import { CloudConsent } from './ui/CloudConsent';
@@ -8,6 +9,9 @@ import { LibraryScreen } from './ui/LibraryScreen';
 import { PracticeScreen } from './ui/PracticeScreen';
 import { usePath } from './ui/router';
 import { YourAiScreen } from './ui/YourAiScreen';
+
+// Development only: a gallery of every picture and check. Vite drops it from the production build.
+const DevGallery = import.meta.env.DEV ? lazy(() => import('./ui/DevGallery')) : null;
 
 function Screen({ path }: { path: string }) {
   const [, section, param] = path.split('/');
@@ -22,6 +26,14 @@ function Screen({ path }: { path: string }) {
       return param ? <DetailScreen key={param} id={param} /> : <LibraryScreen />;
     case 'practice':
       return param ? <PracticeScreen key={param} id={param} /> : <HomeScreen />;
+    case 'dev':
+      return DevGallery ? (
+        <Suspense fallback={null}>
+          <DevGallery />
+        </Suspense>
+      ) : (
+        <HomeScreen />
+      );
     default:
       return <HomeScreen />;
   }

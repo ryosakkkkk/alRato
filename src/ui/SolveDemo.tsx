@@ -1,46 +1,99 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { VisualSpec } from '../core/types';
+import { verifySolution } from '../core/verifier';
 import { useI18n } from '../i18n';
-import { AnswerCheckLine, FunctionGraph, MathMorph, writeBoard } from './Board';
+import type { MessageKey } from '../i18n/en';
+import { CheckLine } from './Agent';
+import { MathMorph, writeBoard } from './Board';
 import { Icon } from './Icon';
 import { MathText } from './MathText';
+import { MathVisual } from './Visuals';
 
-const EXERCISE = '$-x^2-2x=-3$';
-const FUNCTION = 'x^2+2x-3';
+interface Example {
+  exercise: string;
+  steps: { label: MessageKey; math: string }[];
+  visual: VisualSpec;
+  /** How long the finished board stays before the next example, in milliseconds. */
+  hold: number;
+}
+
+const EXAMPLES: Example[] = [
+  {
+    exercise: '$-x^2-2x=-3$',
+    steps: [
+      { label: 'demo.s1', math: '$x^2+2x-3=0$' },
+      { label: 'demo.s2', math: '$(x+3)(x-1)=0$' },
+      { label: 'demo.s3', math: '$x=-3 \\quad \\text{·} \\quad x=1$' },
+    ],
+    visual: { kind: 'graph', f: 'x^2+2x-3' },
+    hold: 6200,
+  },
+  {
+    exercise: '$\\int_0^2 x^2\\,dx$',
+    steps: [
+      { label: 'demo.b1', math: '$\\frac{x^3}{3}$' },
+      { label: 'demo.b2', math: '$\\frac{2^3}{3}-\\frac{0^3}{3}$' },
+      { label: 'demo.b3', math: '$\\int_0^2 x^2\\,dx=\\frac{8}{3}$' },
+    ],
+    visual: { kind: 'area', f: 'x^2', a: 0, b: 2 },
+    hold: 7000,
+  },
+  {
+    exercise: '$\\sin\\left(\\frac{\\pi}{6}\\right)$',
+    steps: [
+      { label: 'demo.c1', math: '$\\frac{\\pi}{6}=30^{\\circ}$' },
+      { label: 'demo.c2', math: '$\\sin\\theta=y$' },
+      { label: 'demo.c3', math: '$\\sin\\left(\\frac{\\pi}{6}\\right)=\\frac{1}{2}$' },
+    ],
+    visual: { kind: 'unit_circle', f: 'sin', a: Math.PI / 6 },
+    hold: 7600,
+  },
+];
 const FINAL_STEP = 2;
 
 /**
- * A fixed example of the step-by-step solver for the home screen, written on the same board as the
- * real solutions and ending with the same graph. It is not an answer from the model and not taken
- * from the student's notes, and it says so.
+ * Fixed examples of the step-by-step solver for the home screen: an equation, an integral and an
+ * angle, each written on the same board as the real solutions, drawn with the same pictures and
+ * checked by the same arithmetic on the device. They are not answers from a model and not taken
+ * from the student's notes, and the card says so.
  */
 export function SolveDemo() {
   const { t } = useI18n();
   const [reduced] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-  // How many solution steps are on the board: 0 to 3, then the graph, then the example starts again.
+  const [example, setExample] = useState(0);
+  // How many solution steps are on the board: 0 to 3, then the picture, then the next example.
   const [shown, setShown] = useState(0);
   const board = useRef<HTMLDivElement>(null);
+  const current = EXAMPLES[example];
 
   useEffect(() => {
     if (reduced) return;
-    const wait = shown === 0 ? 1600 : shown === FINAL_STEP + 1 ? 6200 : 2000;
-    const timer = window.setTimeout(() => setShown((n) => (n === FINAL_STEP + 1 ? 0 : n + 1)), wait);
+    const wait = shown === 0 ? 1600 : shown === FINAL_STEP + 1 ? current.hold : 2000;
+    const timer = window.setTimeout(() => {
+      if (shown === FINAL_STEP + 1) {
+        setExample((n) => (n + 1) % EXAMPLES.length);
+        setShown(0);
+      } else {
+        setShown((n) => n + 1);
+      }
+    }, wait);
     return () => window.clearTimeout(timer);
-  }, [shown, reduced]);
+  }, [shown, reduced, current.hold]);
 
   const visible = reduced ? FINAL_STEP + 1 : shown;
 
   // Each step that just arrived is written now; the ones already on the board stay as they are.
   useLayoutEffect(() => {
     if (board.current) writeBoard(board.current, false);
-  }, [visible, t]);
+  }, [visible, example, t]);
 
-  const steps = [
-    { label: t('demo.s1'), math: '$x^2+2x-3=0$' },
-    { label: t('demo.s2'), math: '$(x+3)(x-1)=0$' },
-    { label: t('demo.s3'), math: `$x=-3 \\quad \\text{${t('demo.or')}} \\quad x=1$` },
-  ];
+  const steps = useMemo(
+    () => current.steps.map((step) => ({ label: t(step.label), math: step.math.replace('\\text{·}', `\\text{${t('demo.or')}}`) })),
+    [current, t],
+  );
   // The stage shows the exercise, then transforms it into each step's equation as the step arrives.
-  const stageTex = (visible === 0 ? EXERCISE : steps[visible - 1].math).slice(1, -1);
+  const stageTex = (visible === 0 ? current.exercise : steps[visible - 1].math).slice(1, -1);
+  const check = useMemo(() => verifySolution(current.exercise, steps[FINAL_STEP].math, current.visual.f), [current, steps]);
 
   return (
     <section className="solve-demo" aria-label={t('demo.kicker')}>
@@ -50,7 +103,8 @@ export function SolveDemo() {
         </span>
         {t('demo.kicker')}
       </div>
-      <div ref={board} className="solution board">
+      {/* A new example gets a new board, so its writing and its stage start from the beginning. */}
+      <div ref={board} key={example} className="solution board">
         <MathMorph tex={stageTex} />
         <ol className="steps">
           <li className="step step-exercise">
@@ -59,7 +113,7 @@ export function SolveDemo() {
             </span>
             <div className="step-body">
               <span className="demo-label">{t('demo.exercise')}</span>
-              <MathText text={EXERCISE} words />
+              <MathText text={current.exercise} words />
             </div>
           </li>
           {steps.slice(0, visible).map((step, i) => (
@@ -72,8 +126,8 @@ export function SolveDemo() {
             </li>
           ))}
         </ol>
-        {visible > FINAL_STEP && <FunctionGraph source={FUNCTION} label={t('demo.graph')} />}
-        {visible > FINAL_STEP && <AnswerCheckLine plot={FUNCTION} finalLine={steps[FINAL_STEP].math} />}
+        {visible > FINAL_STEP && <MathVisual spec={current.visual} delayMs={200} instant={reduced} />}
+        {visible > FINAL_STEP && check && <CheckLine check={check} />}
       </div>
       <p className="solve-note">{t('demo.note')}</p>
     </section>

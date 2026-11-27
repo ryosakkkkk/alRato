@@ -10,9 +10,11 @@ import { isCloudConfigured, isFirebaseConfigured } from '../firebase/app';
 import { authState, preloadAuth, signIn, signOutAccount, subscribeAuth, type SignInResult } from '../firebase/auth';
 import { useI18n } from '../i18n';
 import type { MessageKey } from '../i18n/en';
+import { AgentRolesCard, LearnedCard } from './AgentCards';
 import { formatBytes } from './common';
 import { useDevice } from './hooks';
 import { Icon } from './Icon';
+import { LocalModelCard } from './LocalModelCard';
 import { go } from './router';
 
 const PREFERENCES: RoutePreference[] = ['balanced', 'local', 'quality'];
@@ -312,6 +314,12 @@ export function YourAiScreen() {
         )}
       </section>
 
+      {/* Without Gemini Nano (phones, and browsers without it), the phone's own model can take the hints. */}
+      {device.text !== 'ready' && <LocalModelCard />}
+
+      <AgentRolesCard />
+      <LearnedCard />
+
       {isCloudConfigured && <CloudCard />}
 
       <section className="stack-s">
@@ -371,7 +379,7 @@ export function YourAiScreen() {
       <section className="card stack-s">
         <h2>{t('ai.themeTitle')}</h2>
         <div className="segmented" role="radiogroup" aria-label={t('ai.themeTitle')}>
-          {(['dark', 'light'] as Theme[]).map((option) => (
+          {(['light', 'dark'] as Theme[]).map((option) => (
             <button
               key={option}
               role="radio"

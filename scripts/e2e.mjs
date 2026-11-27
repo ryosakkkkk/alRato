@@ -265,11 +265,12 @@ function pageHelpers() {
         const parent = walker.currentNode.parentElement;
         const value = norm(walker.currentNode.nodeValue);
         if (!value || !parent || ['SCRIPT', 'STYLE'].includes(parent.tagName)) continue;
-        if (parent.closest('.katex') || !isVisible(parent)) continue;
+        // Math and the student's own content (marked translate="no") are not interface text.
+        if (parent.closest('.katex, [translate="no"]') || !isVisible(parent)) continue;
         out.add(value);
       }
       for (const el of document.querySelectorAll('[aria-label], [title], [placeholder], img[alt]')) {
-        if (!isVisible(el)) continue;
+        if (!isVisible(el) || el.closest('[translate="no"]')) continue;
         for (const attr of ['aria-label', 'title', 'placeholder', 'alt']) {
           const value = norm(el.getAttribute(attr));
           if (value) out.add(value);
@@ -1916,6 +1917,9 @@ async function journeyH(s) {
   await tab.nav('nav.capture');
   await tab.waitText(t('capture.context'));
   await visit('capture');
+  // The camera covers the whole phone screen, tab bar included; its close button leads back.
+  await tab.tap(t('capture.close'));
+  await tab.until('the camera to close', async () => !(await tab.path()).startsWith('/capture'));
 
   await tab.nav('nav.ai');
   await tab.waitText(t('ai.deviceTitle'));

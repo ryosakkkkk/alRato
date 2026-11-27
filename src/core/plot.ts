@@ -1,58 +1,92 @@
 /**
- * A small, safe reader for the function the model asks us to draw under a full solution.
- * There is no eval: only numbers, x, + − × ÷ ^, parentheses, pi, e and a few named functions.
- * Anything else makes the plot disappear, never the solution.
+ * A small, safe reader for the math the model and the student write: the function drawn under a
+ * full solution, the equation the device checks, the bounds of an integral. There is no eval: only
+ * numbers, one variable, + − × ÷ ^, parentheses, pi, e and a few named functions. Anything else
+ * makes the drawing or the check disappear, never the solution.
  */
 export type Fn = (x: number) => number;
 
 const FUNCS: Record<string, (v: number) => number> = {
   sqrt: Math.sqrt,
   sin: Math.sin,
+  // Spanish textbooks write "sen" and "tg".
+  sen: Math.sin,
   cos: Math.cos,
   tan: Math.tan,
+  tg: Math.tan,
+  cot: (v) => 1 / Math.tan(v),
+  sec: (v) => 1 / Math.cos(v),
+  csc: (v) => 1 / Math.sin(v),
+  arcsin: Math.asin,
+  arccos: Math.acos,
+  arctan: Math.atan,
   abs: Math.abs,
   exp: Math.exp,
   ln: Math.log,
   log: Math.log10,
 };
 const CONSTS: Record<string, number> = { pi: Math.PI, e: Math.E };
-// Longest names first, so "sqrt" is not read as "s" + "qrt" and "exp" not as "e" + "xp".
-const NAMES = [...Object.keys(FUNCS), ...Object.keys(CONSTS), 'x'].sort((a, b) => b.length - a.length);
+const BASE_NAMES = [...Object.keys(FUNCS), ...Object.keys(CONSTS)];
+
+/** Longest names first, so "sqrt" is not read as "s" + "qrt" and "tan" not as "t" + "an". */
+const namesFor = (variable: string) => [...BASE_NAMES, variable].sort((a, b) => b.length - a.length);
 
 export const MAX_PLOT_CHARS = 80;
 
 type Token =
   | { t: 'num'; v: number }
-  | { t: 'x' }
+  | { t: 'var' }
   | { t: 'const'; v: number }
   | { t: 'fn'; v: string }
   | { t: 'op'; v: '+' | '-' | '*' | '/' | '^' }
   | { t: '(' }
   | { t: ')' };
 
-/** "y = x^2 + 2x", "f(x)=…" and "x^2+2x=3" all become a single expression that equals zero at the answers. */
-function normalize(source: string): string | null {
+/** Rewrites the LaTeX a note or a model uses into plain notation: \frac{a}{b} becomes ((a)/(b)). */
+export function plainMath(source: string): string {
   let s = source
+    .replace(/\\(?:left|right|displaystyle|limits)/g, '')
+    .replace(/\\(?:quad|qquad|[,;:! ])/g, ' ')
+    .replace(/\\operatorname\{([a-zA-Z]+)\}/g, '\\$1')
+    .replace(/\\[lr]vert|\\mid/g, '|')
+    .replace(/\|([^|]+)\|/g, 'abs($1)');
+  // Innermost groups first, so nested fractions, roots and exponents unwrap one level per pass.
+  for (let pass = 0; pass < 12; pass += 1) {
+    const next = s
+      .replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '(($1)/($2))')
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, 'sqrt($1)')
+      .replace(/\^\s*\{([^{}]*)\}/g, '^($1)');
+    if (next === s) break;
+    s = next;
+  }
+  return s;
+}
+
+/** "y = x^2 + 2x", "f(x)=…" and "x^2+2x=3" all become a single expression that equals zero at the answers. */
+function normalize(source: string, variable: string): string | null {
+  let s = plainMath(source)
     .toLowerCase()
     .replace(/\$/g, '')
     .replace(/\\cdot|\\times/g, '*')
-    .replace(/\\left|\\right/g, '')
+    .replace(/\\div/g, '/')
     .replace(/[{}]/g, (c) => (c === '{' ? '(' : ')'))
     .replace(/\\/g, '')
     .replace(/[−–]/g, '-')
     .replace(/[·×]/g, '*')
     .replace(/÷/g, '/')
+    .replace(/π/g, 'pi')
     .replace(/\*\*/g, '^')
     .replace(/,/g, '.')
     .replace(/\s+/g, '');
-  s = s.replace(/^(y|f\(x\))=/, '');
+  s = s.replace(new RegExp(`^(y|[fgh]\\(${variable}\\))=`), '');
   const sides = s.split('=');
   if (sides.length > 2 || sides.some((side) => !side)) return null;
   if (sides.length === 2) s = `(${sides[0]})-(${sides[1]})`;
   return s;
 }
 
-function tokenize(s: string): Token[] | null {
+function tokenize(s: string, variable: string): Token[] | null {
+  const names = namesFor(variable);
   const out: Token[] = [];
   let i = 0;
   while (i < s.length) {
@@ -65,9 +99,9 @@ function tokenize(s: string): Token[] | null {
       out.push({ t: 'num', v });
       i = j;
     } else if (/[a-z]/.test(c)) {
-      const name = NAMES.find((n) => s.startsWith(n, i));
+      const name = names.find((n) => s.startsWith(n, i));
       if (!name) return null;
-      if (name === 'x') out.push({ t: 'x' });
+      if (name === variable) out.push({ t: 'var' });
       else if (name in FUNCS) out.push({ t: 'fn', v: name });
       else out.push({ t: 'const', v: CONSTS[name] });
       i += name.length;
@@ -108,7 +142,7 @@ class Parser {
 
   private startsFactor(): boolean {
     const tok = this.peek();
-    return !!tok && (tok.t === 'num' || tok.t === 'x' || tok.t === 'const' || tok.t === 'fn' || tok.t === '(');
+    return !!tok && (tok.t === 'num' || tok.t === 'var' || tok.t === 'const' || tok.t === 'fn' || tok.t === '(');
   }
 
   private expr(): Fn | null {
@@ -180,7 +214,7 @@ class Parser {
         const v = tok.v;
         return () => v;
       }
-      case 'x':
+      case 'var':
         return (x) => x;
       case 'fn': {
         const f = FUNCS[tok.v];
@@ -200,14 +234,38 @@ class Parser {
   }
 }
 
-/** The function in `source`, or null when it is not something we can draw safely. */
-export function compileFunction(source: string): Fn | null {
-  if (!source || source.length > MAX_PLOT_CHARS) return null;
-  const normalized = normalize(source);
-  if (!normalized || !normalized.includes('x')) return null;
-  const tokens = tokenize(normalized);
+export interface ExpressionOptions {
+  /** The variable's name: x for functions, t for curves given by x(t) and y(t). */
+  variable?: string;
+  /** A constant such as pi/6 has no variable; a function to draw must have one. */
+  requireVariable?: boolean;
+  maxChars?: number;
+}
+
+/** The expression in `source` as a function of its variable, or null when it cannot be read safely. */
+export function compileExpression(source: string, options: ExpressionOptions = {}): Fn | null {
+  const { variable = 'x', requireVariable = true, maxChars = MAX_PLOT_CHARS } = options;
+  if (!source || source.length > maxChars) return null;
+  const normalized = normalize(source, variable);
+  if (!normalized) return null;
+  const tokens = tokenize(normalized, variable);
   if (!tokens || tokens.length === 0) return null;
-  const fn = new Parser(tokens).parse();
+  if (requireVariable && !tokens.some((token) => token.t === 'var')) return null;
+  return new Parser(tokens).parse();
+}
+
+/** The value of a constant expression such as "pi/6", "-\frac{3}{2}" or "2sqrt(3)", or null. */
+export function evaluateConstant(source: string): number | null {
+  const fn = compileExpression(source.trim(), { requireVariable: false, maxChars: 60 });
+  if (!fn) return null;
+  const value = fn(0);
+  // A constant must not depend on the variable at all.
+  return Number.isFinite(value) && fn(1.2345) === value ? value : null;
+}
+
+/** The function in `source`, or null when it is not something we can draw safely. */
+export function compileFunction(source: string, maxChars = MAX_PLOT_CHARS): Fn | null {
+  const fn = compileExpression(source, { maxChars });
   if (!fn) return null;
   // A function that is undefined almost everywhere is not worth a graph.
   let finite = 0;

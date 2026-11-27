@@ -12,6 +12,9 @@ Students photograph the board and often never open the photo again. alRato ("al 
 | **The value** | The photo turns into hints, a link to what you already know, and practice scheduled for later. |
 | **What is non-obvious** | The model extracts what each note *teaches* and what it *needs* as prior knowledge. On-device retrieval matches needs against teaches, so a Bellman equation exercise connects to the student's old weighted-average note, because probabilities act as weights, even though the two notes share almost no words. |
 | **Firebase AI Logic** | Each task picks its own SDK inference mode in [`src/ai/router.ts`](src/ai/router.ts). Private notes use `ONLY_ON_DEVICE`. Reading handwriting and math, and organizing a note, use `PREFER_IN_CLOUD`. Hints use `PREFER_ON_DEVICE`. With no route available, the note waits and resumes by itself. |
+| **A small agent: each model on what it does best** | Reading a photo and organizing a note go to a fast Gemini model, the full worked solution to the strongest reasoning model (`model_reasoning` in Remote Config), and hints to the device. Then the device **checks the answer with arithmetic and no model**: it puts the answers back into the equation, compares a derivative with the slope, integrates numerically. If it proves an answer wrong, the solver gets exactly what failed and writes one corrected solution. Under the solution, **How alRato solved it** lists each step and where it ran, like a list of tool calls. |
+| **Hybrid on phones too** | Firebase AI Logic's on-device side is Chrome's Gemini Nano, which only desktop Chrome has. On a phone, the student can download Google's open **Gemma 3 1B** (or the lighter Qwen2.5 0.5B) once, and it runs on the phone's GPU through WebGPU. The router treats it as the device route for text tasks, so hints work offline and with nothing sent. |
+| **It learns about the student, without training** | Gemini comes trained by Google, and alRato never retrains it. It keeps a per-concept picture of the student from their own hints and practice, on the device, and tells the tutor model what is hard and what is known (**Your AI > What alRato learned about you**). |
 | **Proof on every answer** | A receipt shows the real `response.inferenceSource` from the SDK, the bytes sent and the latency. |
 | **An SDK behavior we guard against** | In SDK 13.4, `ONLY_ON_DEVICE` in a browser without the Prompt API silently goes to the cloud. alRato refuses that call before the SDK runs: see `assertOnDevicePossible` in [`src/ai/engine.ts`](src/ai/engine.ts) and [`tests/engine.test.ts`](tests/engine.test.ts). |
 
@@ -35,11 +38,13 @@ alRato is designed around these findings. It has not been evaluated with student
 
 ## What it does
 
-1. **Snap.** Use the camera or the gallery, add an optional line of context, and optionally mark the note **Keep on this device**. The photo is saved locally and the app returns at once, so the student can look back at the board.
+1. **Snap.** The camera opens full screen with a frame to aim at one **exercise** or the whole **board**; its pink corners can be dragged, and only what is inside the frame is kept. The first time, the camera permission is asked right there, with a line on why, and a blocked camera says how to turn it back on. The gallery, an optional line of context and **Keep on this device** sit under the shutter. The photo is saved locally and the app returns at once, so the student can look back at the board.
 2. **Read and organize, later.** A background queue transcribes the photo, with math in LaTeX, then labels it: kind, title, subject, topic, what it teaches and what it needs. If no route is available, the note waits and continues by itself.
 3. **Help, one rung at a time.** For an exercise the student climbs four rungs: nudge, hint, first step, full solution. This follows the classic tutoring sequence of pointing, teaching and bottom-out hints (VanLehn, 2006). Other notes get key ideas, an explanation or an answer to the student's doubt. The full solution is shown like an animated math video: at the top of a dark board the main equation transforms from one step to the next (symbols that stay glide to their new place, new ones are written in colour, the rest fade), and below it each step is written one symbol at a time. When the exercise is a function or an equation in *x*, the model also names the function; the app draws its graph with the answers marked, and then **checks those answers on the device, without any model**, by putting them into the function ("Checked on this device: f(−3) = 0 · f(1) = 0"). That is the hybrid split for solving: the cloud writes the long reasoning, the device verifies it and gives the everyday hints. The function is read by a small parser in [`src/core/plot.ts`](src/core/plot.ts), never evaluated as code, and only the last rung may draw one, because a graph shows the answer.
+   The solver also chooses the picture that explains the idea best, and the device draws it: a graph with its zeros, two curves meeting at the solutions of a system, the area under a curve filled by rectangles that become the integral, secant lines that turn into the tangent, a point going around the unit circle that draws the sine wave, or a curve traced by a moving point ([`src/ui/Visuals.tsx`](src/ui/Visuals.tsx)). The device check ([`src/core/verifier.ts`](src/core/verifier.ts)) covers equations in *x*, systems of two functions, derivatives (also at a point), definite and indefinite integrals, and calculations with no unknown; for anything else it stays quiet rather than guess. A wrong final answer is framed in rose and triggers one correction ([`src/ai/help.ts`](src/ai/help.ts)).
 4. **Connect.** An answer can link to one earlier note under **Connected to your note**, with one sentence that starts from what the student already knows.
 5. **Practice.** Help can propose a short question. The student tries it, reveals the answer, rates themselves, and the card comes back on a Leitner-style schedule of 1, 3, 7, 16 or 35 days.
+6. **Learn about the student.** From the hints each exercise needed and how practice went, [`src/core/learner.ts`](src/core/learner.ts) keeps a mastery estimate per concept. The tutor model is told which concepts are hard for this student and which are known, so hints give more scaffolding where it is needed. A note that may go to the cloud only ever sees what the student's public notes taught.
 
 With **optional sync**, a student can snap the board on a phone, which has no local model, and study it on a laptop with Gemini Nano. Sync is off until the student turns it on, and private notes never sync.
 
@@ -73,6 +78,21 @@ What we use from the platform:
 - **App Check** with reCAPTCHA Enterprise ([`src/firebase/app.ts`](src/firebase/app.ts)). Without it, the cloud route stays closed.
 - **Remote Config** ([`src/firebase/remoteConfig.ts`](src/firebase/remoteConfig.ts)) for model names and routing thresholds, so a retired model can be swapped without a rebuild.
 
+### The agent: each model on what it does best
+
+| Role | Who does it | Where | Why |
+|---|---|---|---|
+| Read the photo | `model_vision`, gemini-3.5-flash-lite first | Cloud; the device on paid mobile data | Handwriting and math need strong vision |
+| Organize the note | `model_text` | Cloud when allowed | Its kind and links decide what the student sees next |
+| Hints, rungs 1 to 3 | Gemini Nano, or the phone's local model | Device | Short and frequent: instant, free and private |
+| Full solution, rung 4 | `model_reasoning`, gemini-3.8-flash first | Cloud | Long reasoning, asked for once per exercise |
+| Check the answer | [`src/core/verifier.ts`](src/core/verifier.ts), no model | Device | Exact arithmetic, private, free |
+| Correct a wrong answer | The solver again, told what failed | Cloud | Only when the check proves an error, and only once |
+| Draw the idea | [`src/ui/Visuals.tsx`](src/ui/Visuals.tsx), no model | Device | The solver only names the picture and its formulas |
+| Remember the student | [`src/core/learner.ts`](src/core/learner.ts), no model | Device | Mastery per concept, from hints and practice |
+
+**On phones: a local model on the GPU.** Firebase AI Logic's on-device inference on the web is Chrome's Prompt API, which desktop Chrome has and Chrome on Android does not. So a phone, the APK included, would otherwise have no device route. In **Your AI > Local AI on your phone** the student can download Gemma 3 1B (602 MB, needs 16-bit GPU floats) or Qwen2.5 0.5B (290 MB) once; [`src/ai/localModel.ts`](src/ai/localModel.ts) runs it with [WebLLM](https://github.com/mlc-ai/web-llm) on WebGPU, constrained to the same JSON Schema as the other routes. The engine sends it the text tasks the router gives the device, and falls back to the cloud if it fails on a note that may go there. It never sees photos, and its runtime is a separate chunk that loads only when it is used. This path is outside Firebase AI Logic by necessity; every cloud call still goes through it.
+
 ### Which task uses which mode, and why
 
 `decideRoute()` evaluates these rules in order. The first match wins.
@@ -92,6 +112,8 @@ What we use from the platform:
 | 11 | The full worked solution (last rung of the hint ladder), when the cloud is allowed | `PREFER_IN_CLOUD` | Long reasoning, asked for once per exercise; the device then checks its answers without any model | `solution_quality` |
 | 12 | Input over 3,500 characters | `PREFER_IN_CLOUD` | Long prompts go to the model with more room | `long_input` |
 | 13 | Hints, normal input | `PREFER_ON_DEVICE` | Short, frequent and interactive: no network, no API cost | `everyday_local` |
+
+"Local model" in this table means Gemini Nano, or, for text tasks, the phone's local model when the student downloaded one.
 
 If an on-device call fails or returns unusable output and the note is not private, the engine retries with `ONLY_IN_CLOUD` (`device_failed_fallback`). The SDK does not do this by itself once it has committed to the device.
 
@@ -240,6 +262,7 @@ The app ships with safe defaults, so this step is optional. To change them from 
 |---|---|---|
 | `model_vision` | `gemini-3.5-flash-lite,gemini-3.8-flash,gemini-4-hydrogen` | Cloud models for reading photos. The first is preferred, the rest are backups |
 | `model_text` | `gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash` | Cloud models for organizing and hints. The first is preferred, the rest are backups |
+| `model_reasoning` | `gemini-3.8-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite` | Cloud models for full worked solutions: the strongest first |
 | `long_input_chars` | `3500` | Above this, text tasks prefer the cloud |
 | `daily_cloud_cap` | `40` | Cloud calls per browser per day before the device or the queue takes over |
 
@@ -270,7 +293,7 @@ Then add your `*.web.app` and `*.firebaseapp.com` domains to the reCAPTCHA key f
 
 alRato also ships as an Android app. It is a [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity) built with Bubblewrap from [`android/twa-manifest.json`](android/twa-manifest.json): Chrome opens the hosted PWA full screen, and [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) proves the app and the site belong together, so there is no address bar. It is the same app, the same code and the same privacy rules, and it updates when the site is deployed.
 
-**How the hybrid AI behaves on a phone.** The router is the same. Cloud calls go through Firebase AI Logic with App Check, exactly as on the web. Gemini Nano runs on the phone only if Chrome on that phone offers its on-device Prompt API; where it does not, which is most phones today, a public note uses the cloud after consent and a private note waits on the device (rows 4 and 5 of the routing table). Every answer's receipt says which route was taken. The device-side check of a full solution ([`src/core/verify.ts`](src/core/verify.ts)) needs no model, so it runs on every phone.
+**How the hybrid AI behaves on a phone.** The router is the same. Cloud calls go through Firebase AI Logic with App Check, exactly as on the web. Gemini Nano runs on the phone only if Chrome on that phone offers its on-device Prompt API, which most phones do not today. There, the student can download the local model (Gemma 3 1B or Qwen2.5 0.5B, on the phone's GPU through WebGPU) and hints then run on the phone; without it, a public note uses the cloud after consent and a private note waits on the device (rows 4 and 5 of the routing table). Every answer's receipt says which route was taken. The device-side check of a full solution ([`src/core/verify.ts`](src/core/verify.ts)) needs no model, so it runs on every phone.
 
 **Install on a phone.** Copy `app-release-signed.apk` to the phone and open it; Android asks once to allow installs from that source.
 
@@ -287,7 +310,7 @@ For Google Play, upload the `.aab` and add Play App Signing's SHA-256 fingerprin
 
 ## Enable and check Gemini Nano in Chrome
 
-On-device inference through Firebase AI Logic needs **Chrome on desktop**. Chrome on Android and iOS does not have it yet, so phones take the cloud route.
+On-device inference through Firebase AI Logic needs **Chrome on desktop**. Chrome on Android and iOS does not have it yet; on phones, use the local model under **Your AI** instead (see [On phones](#the-agent-each-model-on-what-it-does-best)).
 
 | Requirement | Value |
 |---|---|
@@ -336,6 +359,8 @@ On-device inference through Firebase AI Logic needs **Chrome on desktop**. Chrom
 | **Offline, no model** | Turn on airplane mode on a phone and take a photo | "Saved. alRato will read it when you are back online." Reconnect and it finishes by itself |
 | **Paid data, with Nano** | Throttle the network to **3G** in DevTools, then add a photo | Open the receipt: "You are on mobile data, so the photo was processed here to save it." |
 | **Student preference** | **Your AI >** Device first or Best quality | The receipt reason changes to match |
+| **The agent and the device check** | On an exercise, climb to **Show the full solution** | The board writes the steps and draws the picture, a green line says **Checked on this device, without AI**, and **How alRato solved it** lists each step and where it ran |
+| **Local AI on a phone** | Android with an up-to-date Chrome: **Your AI > Local AI on your phone**, pick a model, download it on Wi-Fi | Hints answer **On this device · nothing sent**, also in airplane mode |
 
 The rules behind this table are unit-tested in [`tests/router.test.ts`](tests/router.test.ts). If you cannot get Gemini Nano on your machine, [`tests/engine.test.ts`](tests/engine.test.ts) exercises the on-device path through the real SDK against a stubbed Prompt API.
 
@@ -373,6 +398,9 @@ alRato is built with **[Claude Code](https://claude.com/claude-code)**, an AI co
 | [TypeScript](https://www.typescriptlang.org/) | 7.0.2 | Apache-2.0 | Type checking |
 | [Vitest](https://vitest.dev/), [jsdom](https://github.com/jsdom/jsdom) | 5.1.1, 29.1.1 | MIT | Tests |
 | [fake-indexeddb](https://github.com/dumbmatter/fakeIndexedDB) | 6.2.8 | Apache-2.0 | Tests |
+| [WebLLM](https://github.com/mlc-ai/web-llm) | 0.2.89 | Apache-2.0 | The optional local model on a phone's GPU |
+
+The local models are not bundled: the student downloads them from Hugging Face on purpose. [Gemma 3](https://ai.google.dev/gemma) is under the Gemma Terms of Use; [Qwen2.5](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) is Apache-2.0.
 
 Firebase, Gemini and Chrome are trademarks of Google LLC. alRato is an independent project and is not endorsed by Google.
 
@@ -382,7 +410,8 @@ Firebase, Gemini and Chrome are trademarks of Google LLC. alRato is an independe
 - **The on-device path has run once, on a cloud machine.** Gemini Nano ran for real, on CPU only, in a free cloud virtual machine (4 cores, 16 GB RAM, Chrome 158 on Linux). The model took 152 seconds to download, and single runs took 4.3 s for a Spanish sentence, 3.2 s for JSON and 6.9 s for a short board image. On that run Gemini Nano filed the sample exercise as a formula in three of four tries, which is why organizing runs in the cloud when it is allowed. The student can change a note's type with one tap before hints start. The team's own computers and phones cannot run Gemini Nano, so there is no on-device measurement on a phone yet. <!-- MEASURE: on-device latency on a machine that meets the requirements -->
 - **The free cloud tier is shared.** Gemini's free tier counts requests per Google Cloud project, so every visitor of the hosted app shares it. On Nov 24, 2026, Google AI Studio showed 500 requests a day each for gemini-3.5-flash-lite and gemini-3.1-flash-lite, and 20 a day for gemini-3.8-flash. When a model's daily quota is gone, a device stops asking that model until midnight Pacific time, and it answers on the device or waits. A cap of 40 cloud calls per browser per day keeps one heavy user from using up the shared quota.
 - **Model quality is unmeasured.** We have no accuracy figures for reading handwriting and math on either route, or for how often teaches/needs extraction finds the right link. A connection appears only if the model names a matching prerequisite and agrees the note helps. <!-- MEASURE: transcription accuracy on real board photos, cloud vs Nano --> <!-- MEASURE: precision of "Connected to your note" on real notes -->
-- **On-device needs desktop Chrome with capable hardware.** Phones use the cloud route, and a private note on a phone waits until a device with a local model is available.
+- **Gemini Nano needs desktop Chrome with capable hardware.** On phones, the local model needs WebGPU and a one-time download of 290 to 602 MB. It reads text only, so a private photo on a phone still waits for a vision model (or for the student to type its text), and it has not been measured on a real phone yet.
+- **The device check is narrow on purpose.** It covers equations in *x*, systems of two functions, derivatives, integrals and calculations with no unknown, and stays quiet otherwise. A correction is requested at most once per solution.
 - **Privacy starts at capture.** Marking an existing note private cannot recall what was already sent, including a request already on its way. Its answer is discarded and nothing more is sent. Set the switch before you take the photo.
 - **Cloud hints can include related notes.** A hint on a non-private note may send short snippets of up to three related non-private notes. The receipt reports the size.
 - **Sync is simple on purpose.** It keeps the most recent version of a note (last writer wins), and a note that cannot fit in one Firestore document after compression stays on the device.

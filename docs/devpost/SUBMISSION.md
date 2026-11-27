@@ -4,7 +4,7 @@ Ready-to-paste text for every field of the #BuildHybridAI entry. Copy what is in
 
 ## Submission status
 
-Last updated November 25, 2026. Done: the hosted app, the Firebase project with AI Logic and App Check, the public repository, Devpost steps 1 to 4 except the demo video link. Still open: the demo video (upload it to YouTube, then add its link to the README and to step 3), the attestation checkboxes, and the final submit.
+Last updated November 27, 2026. Done: the hosted app, the Firebase project with AI Logic and App Check, the public repository, Devpost steps 1 to 4 except the demo video link. Still open: the demo video (upload it to YouTube, then add its link to the README and to step 3), the attestation checkboxes, and the final submit.
 
 | Contest requirement | Where it is met |
 |---|---|
@@ -53,9 +53,11 @@ A student photographs the board and looks back up. That is all they do in class.
 
 1. **Reads** the photo, including handwriting and math, into editable text with LaTeX.
 2. **Organizes** it by subject and topic, and extracts two things note apps usually do not: what the note *teaches* and what it *needs* as prior knowledge.
-3. **Helps without giving the answer away.** On an exercise, the student climbs a ladder: nudge, hint, first step, full solution. The full solution plays like an animated math video: the main equation transforms from one step to the next while each step is written symbol by symbol. When the exercise is a function or an equation in *x*, the app draws its graph and the device checks the cloud's answers by itself, with no model: the cloud reasons, the device verifies.
-4. **Connects** the note to one they already have. On-device retrieval matches what this note *needs* against what older notes *teach*. A Bellman equation exercise links to the student's old weighted-average note, because probabilities act as weights, even though the two notes share almost no words.
-5. **Schedules practice**, so the student recalls the idea again over the following days and weeks.
+3. **Helps without giving the answer away.** On an exercise, the student climbs a ladder: nudge, hint, first step, full solution. The full solution plays like an animated math video: the main equation transforms from one step to the next while each step is written symbol by symbol, and the device draws the idea: a graph with its zeros, two curves meeting, an area filled by rectangles that become the integral, secants turning into a tangent, or a point on the unit circle drawing the sine wave.
+4. **Checks itself, like a small agent.** Each job goes to the model that is best at it: a fast Gemini model reads the photo, the strongest one writes the full solution, and hints run on the device. Then the device checks the answer with arithmetic and no model (it substitutes, compares slopes, integrates numerically), and if it proves the answer wrong, the solver gets exactly what failed and writes one corrected solution. A trace under the solution shows every step and where it ran.
+5. **Connects** the note to one they already have. On-device retrieval matches what this note *needs* against what older notes *teach*. A Bellman equation exercise links to the student's old weighted-average note, because probabilities act as weights, even though the two notes share almost no words.
+6. **Schedules practice**, so the student recalls the idea again over the following days and weeks.
+7. **Learns about the student, without training any model.** From the hints each exercise needed and how practice went, it keeps a mastery estimate per concept on the device and tells the tutor what is hard for this student.
 
 Every AI answer carries a receipt: where it really ran (the SDK's `inferenceSource`), how many bytes left the device, and how long it took.
 
@@ -67,6 +69,10 @@ The heart of alRato is **Firebase AI Logic hybrid inference, used per task** ins
 - **Reading handwriting and math** uses `PREFER_IN_CLOUD`, because quality matters most there and nobody is waiting for it. On paid mobile data it prefers the device.
 - **Organizing a note** uses `PREFER_IN_CLOUD`, because its kind and links decide what the student sees next. **Short hints** use `PREFER_ON_DEVICE`: no network, no API cost.
 - **No route available:** the note waits in a queue and resumes by itself.
+
+- **The full worked solution** uses `PREFER_IN_CLOUD` with the strongest reasoning model, and the device verifies it.
+
+On phones, where Chrome has no Gemini Nano, the student can download Google's open Gemma 3 1B once; it runs on the phone's GPU through WebGPU and the router treats it as the device route for text tasks.
 
 `src/ai/engine.ts` runs that decision through `getGenerativeModel` with `inCloudParams` and `onDeviceParams`. One JSON Schema configures both routes (`responseSchema` in the cloud, `responseConstraint` on Gemini Nano), so the app handles a single shape. App Check with reCAPTCHA Enterprise protects the cloud route, and Remote Config can swap models and tune thresholds without a rebuild.
 
@@ -86,6 +92,8 @@ We built alRato with **Claude Code**, an AI coding assistant, and we disclose th
 
 **Finding prerequisites, not lookalikes.** Similar text would never connect a Bellman equation to a weighted average. Extracting what each note needs and teaches, with canonical English keys so Spanish and English notes can match, solved that without embeddings and without sending the library anywhere.
 
+**An answer that sounds right is not proof.** Cloud models write convincing solutions with a wrong sign. Instead of asking a second model to judge the first, the device checks the result with exact arithmetic on a small, safe parser (no eval), and only a proven error triggers a correction.
+
 **Testing without the hardware.** Our computers and phones cannot run Gemini Nano, so we ran the real model in a free cloud virtual machine with 4 CPU cores and 16 GB of RAM, using Chrome 158 on Linux. It downloaded the model and answered real prompts. Those runs are single samples, so we present them as proof that the route works, not as a benchmark.
 
 ## Accomplishments that we're proud of
@@ -94,6 +102,7 @@ We built alRato with **Claude Code**, an AI coding assistant, and we disclose th
 - Receipts that report what actually happened, from the SDK itself.
 - A complete product rather than a demo: capture, offline queue, library, hint ladder, connections, spaced practice, two languages, and one-tap data deletion.
 - A connection feature that works from what a student already knows, built on published learning research and honest about its limits.
+- A hybrid agent where the device is not just a fallback: it verifies the cloud's math, draws it, remembers the student, and can run the hints on a phone's GPU.
 
 ## What we learned
 
@@ -108,7 +117,7 @@ We built alRato with **Claude Code**, an AI coding assistant, and we disclose th
 - Measure latency and transcription quality on real hardware, for both routes.
 - Evaluate how often "Connected to your note" picks the right note.
 - Fit the review schedule to real data instead of fixed intervals.
-- Use local models on phones as soon as mobile browsers offer them. The router already has a place for them.
+- Measure the phone's local model (latency and hint quality) on real Android hardware, and switch to Gemini Nano on phones as soon as mobile Chrome offers it.
 
 ## References
 
@@ -118,7 +127,7 @@ Bastani et al. (2025), *PNAS* 122(26). Brod (2021), *npj Science of Learning* 6,
 ## 4. Built with
 
 ```text
-firebase-ai-logic, gemini, gemini-nano, chrome-prompt-api, firebase, firebase-app-check, firebase-remote-config, firebase-hosting, firebase-authentication, cloud-firestore, recaptcha-enterprise, react, typescript, vite, indexeddb, dexie, katex, pwa, workbox, vitest, claude-code
+firebase-ai-logic, gemini, gemini-nano, chrome-prompt-api, gemma, webgpu, webllm, firebase, firebase-app-check, firebase-remote-config, firebase-hosting, firebase-authentication, cloud-firestore, recaptcha-enterprise, react, typescript, vite, indexeddb, dexie, katex, pwa, workbox, vitest, claude-code
 ```
 
 Remove `firebase-hosting` if you do not deploy there.
@@ -151,6 +160,8 @@ https://github.com/ryosakkkkk/alRato
 - **On-device:** use desktop Chrome 148 or later, with 22 GB free and either a GPU with more than 4 GB of VRAM or 16 GB of RAM and 4 CPU cores. Open **Your AI** and click **Download on-device AI**. The receipt then says *On this device, nothing sent*, and no `generateContent` request appears.
 - **Private note:** turn on **Keep on this device** before taking a photo. With Gemini Nano it runs locally. Without it, the note waits and no request is sent.
 - **Offline:** set DevTools > Network to **Offline**. With Gemini Nano, hints keep working. Without it, a new photo waits, then finishes by itself when you go back online.
+- **The agent:** on an exercise, climb to **Show the full solution**. The device draws the picture, says **Checked on this device, without AI**, and **How alRato solved it** lists each step and where it ran.
+- **A phone:** on Android with an up-to-date Chrome, open **Your AI > Local AI on your phone** and download a model on Wi-Fi. Hints then run on the phone, also offline.
 
 **If you cannot run Gemini Nano**, the privacy gate and the routing policy are covered by automated tests that use the real Firebase SDK with a stubbed Prompt API:
 
@@ -167,9 +178,9 @@ Full instructions are in the README, under "Testing instructions for judges".
 ## 7. What was built during the submission period
 
 ```text
-alRato was written from scratch during the submission period, starting from an empty folder. This includes the React app, the per-task hybrid router and engine on Firebase AI Logic, the privacy gate that guards against the SDK's cloud path for ONLY_ON_DEVICE, the offline queue, teaches/needs retrieval, the Socratic hint ladder, spaced practice, the receipts, the English and Spanish interface, optional Google sign-in with Firestore sync, the automated tests, the Firebase configuration, and the documentation.
+alRato was written from scratch during the submission period, starting from an empty folder. This includes the React app, the per-task hybrid router and engine on Firebase AI Logic, the privacy gate that guards against the SDK's cloud path for ONLY_ON_DEVICE, the offline queue, teaches/needs retrieval, the Socratic hint ladder, the step-by-step board with its animated pictures, the on-device answer check and correction loop, the learner model, the optional local model for phones, the full-screen camera, spaced practice, the receipts, the English and Spanish interface, optional Google sign-in with Firestore sync, the automated tests, the Firebase configuration, and the documentation.
 
-Pre-existing work is limited to third-party open source libraries, listed with their licenses in the README: the Firebase JS SDK, React, Dexie, KaTeX, Vite, vite-plugin-pwa with Workbox, TypeScript, Vitest, jsdom, fake-indexeddb, and the Fraunces, Inter and Caveat fonts.
+Pre-existing work is limited to third-party open source libraries, listed with their licenses in the README: the Firebase JS SDK, React, Dexie, KaTeX, Vite, vite-plugin-pwa with Workbox, TypeScript, Vitest, jsdom, fake-indexeddb, WebLLM, and the Fraunces, Inter and Caveat fonts. The optional local models (Gemma 3 1B, Qwen2.5 0.5B) are downloaded by the student at runtime and are not part of the repository.
 
 The project was built with Claude Code, an AI coding assistant.
 ```

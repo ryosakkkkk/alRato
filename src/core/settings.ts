@@ -18,20 +18,24 @@ export function setLang(lang: Lang): void {
 }
 
 export type Theme = 'dark' | 'light';
-const THEME_KEY = 'alrato.theme';
+/** A new key: choices saved while dark was the default are not carried over, so everyone starts in white. */
+const THEME_KEY = 'alrato.appearance';
 
-/** Dark is the default look: the board and the math videos it imitates are dark. */
+/** White is the default look. Dark stays one tap away in Your AI > Appearance. */
 export function getTheme(): Theme {
   try {
-    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
   } catch {
-    return 'dark';
+    return 'light';
   }
 }
 
+/** The browser and phone bars take the colour of the page, so the app reads as one surface. */
+export const THEME_COLOR: Record<Theme, string> = { light: '#ffffff', dark: '#07070c' };
+
 export function applyTheme(theme: Theme = getTheme()): void {
   document.documentElement.dataset.theme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#07070c' : '#7f9fe0');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLOR[theme]);
 }
 
 export function setTheme(theme: Theme): void {

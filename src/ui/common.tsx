@@ -5,6 +5,7 @@ import type { Capture, Receipt } from '../core/types';
 import { useI18n } from '../i18n';
 import type { MessageKey } from '../i18n/en';
 import { useBlobUrl, useDevice, useOnline } from './hooks';
+import { useLocalModel } from './localModelHooks';
 import { BrandMark } from './Brand';
 import { Icon, type IconName } from './Icon';
 import { go, goBack, usePath } from './router';
@@ -20,20 +21,22 @@ const formatSeconds = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 export function EngineBadge() {
   const { t } = useI18n();
   const device = useDevice();
+  const local = useLocalModel();
   const online = useOnline();
   const consent = useSyncExternalStore(subscribeConsent, getCloudConsent);
   let tone = 'cloud';
   let icon: IconName = 'cloud';
   let label: string = t('engine.cloud');
 
-  if (device.text === 'ready') {
+  if (device.text === 'ready' || local.state === 'ready') {
     tone = 'device';
     icon = 'device';
     label = t('engine.ready');
-  } else if (device.text === 'downloading') {
+  } else if (device.text === 'downloading' || local.state === 'downloading') {
+    const progress = device.text === 'downloading' ? device.progress : local.progress;
     tone = 'pending';
     icon = 'download';
-    label = `${t('engine.downloading')}${device.progress !== null ? ` ${Math.round(device.progress * 100)}%` : ''}`;
+    label = `${t('engine.downloading')}${progress !== null ? ` ${Math.round(progress * 100)}%` : ''}`;
   } else if (!online) {
     tone = 'pending';
     icon = 'offline';
@@ -75,7 +78,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = usePath();
   const activeTab = TABS.findIndex((item) => isActive(path, item.path));
   return (
-    <div className="shell">
+    <div className={path.startsWith('/capture') ? 'shell shell-camera' : 'shell'}>
       <div className="aurora" aria-hidden="true">
         <span />
         <span />
