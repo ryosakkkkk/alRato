@@ -42,6 +42,15 @@ describe('splitSolution', () => {
     ]);
   });
 
+  it('pulls a result back inside the math when the model closed it too early', () => {
+    expect(splitSolution('1. Multiply $0.9 \\cdot 10 = $ 9\n2. Add $2 + 9 =$11\n3. So $V(s) = $ 7.7.').map((s) => s.text)).toEqual([
+      'Multiply $0.9 \\cdot 10 = 9$',
+      'Add $2 + 9 = 11$',
+      'So $V(s) = 7.7$.',
+    ]);
+    expect(splitSolution('1. It costs $5 and\n2. then $x = 2$').map((s) => s.text)).toEqual(['It costs $5 and', 'then $x = 2$']);
+  });
+
   it('splits Spanish sentences that start with an accent or an opening mark', () => {
     expect(splitSolution('Primero suma. Ésta es la clave. ¿Ves el patrón?').map((s) => s.text)).toEqual([
       'Primero suma.',

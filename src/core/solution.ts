@@ -36,8 +36,16 @@ function sentences(paragraph: string): string[] {
   return out.map((s) => s.trim()).filter(Boolean);
 }
 
+/**
+ * Models sometimes close the math before the result, as in "$2 + 9 = $ 11". The result is pulled
+ * back inside, "$2 + 9 = 11$", so the step renders as one formula instead of raw dollar signs.
+ */
+export function tidyMath(line: string): string {
+  return line.replace(/\$([^$\n]*?=)\s*\$\s*([−-]?\s?\d+(?:[.,]\d+)?)(?![\d$])/g, (_, expr: string, result: string) => `$${expr} ${result.replace(/\s/g, '')}$`);
+}
+
 function lineOf(raw: string): SolutionLine | null {
-  const line = raw.trim();
+  const line = tidyMath(raw.trim());
   if (!line) return null;
   const numbered = NUMBERED.exec(line);
   const bullet = numbered ? null : BULLET.exec(line);

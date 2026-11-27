@@ -61,7 +61,8 @@ export const SolutionSteps = memo(function SolutionSteps({ text, plot = null }: 
       <ol className="steps" aria-label={t('solution.label')}>
         {lines.map((line, i) => (
           <li key={i} className={i === last ? 'step step-final' : 'step'}>
-            <span className="step-no">{i === last ? <Icon name="check" size={16} /> : (line.n ?? i + 1)}</span>
+            {/* Numbered here, in order: a model's own numbers can repeat or skip around an introduction. */}
+            <span className="step-no">{i === last ? <Icon name="check" size={16} /> : i + 1}</span>
             <div className="step-body">
               <MathText text={line.text} words />
             </div>
