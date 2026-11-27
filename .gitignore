@@ -4,6 +4,17 @@ dev-dist/
 coverage/
 .local/
 .firebase/
+
+# Android wrapper (Trusted Web Activity): build output and signed packages stay local.
+# The signing key lives in .local/android and never enters the repository.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.apk
+android/*.aab
+android/*.idsig
+android/*.keystore
 *.log
 
 # Secrets and per-developer Firebase config never go in the repository

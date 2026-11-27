@@ -11,8 +11,26 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/apple-touch-icon.png'],
       manifest: {
+        id: '/',
         name: 'alRato — snap now, understand later',
         short_name: 'alRato',
+        scope: '/',
+        display_override: ['standalone', 'minimal-ui'],
+        // Long-press on the installed app's icon: straight to the camera.
+        shortcuts: [
+          {
+            name: 'Capture the board',
+            short_name: 'Capture',
+            url: '/#/capture',
+            icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'My library',
+            short_name: 'Library',
+            url: '/#/library',
+            icons: [{ src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+        ],
         description:
           'Photograph the board in class. alRato turns it into hints, connections to your own notes and spaced practice, on your device when it can and in the cloud when it must.',
         theme_color: '#07070c',

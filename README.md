@@ -266,6 +266,25 @@ npx firebase-tools deploy --only firestore
 
 Then add your `*.web.app` and `*.firebaseapp.com` domains to the reCAPTCHA key from step 4.
 
+## Android app (APK)
+
+alRato also ships as an Android app. It is a [Trusted Web Activity](https://developer.chrome.com/docs/android/trusted-web-activity) built with Bubblewrap from [`android/twa-manifest.json`](android/twa-manifest.json): Chrome opens the hosted PWA full screen, and [`public/.well-known/assetlinks.json`](public/.well-known/assetlinks.json) proves the app and the site belong together, so there is no address bar. It is the same app, the same code and the same privacy rules, and it updates when the site is deployed.
+
+**How the hybrid AI behaves on a phone.** The router is the same. Cloud calls go through Firebase AI Logic with App Check, exactly as on the web. Gemini Nano runs on the phone only if Chrome on that phone offers its on-device Prompt API; where it does not, which is most phones today, a public note uses the cloud after consent and a private note waits on the device (rows 4 and 5 of the routing table). Every answer's receipt says which route was taken. The device-side check of a full solution ([`src/core/verify.ts`](src/core/verify.ts)) needs no model, so it runs on every phone.
+
+**Install on a phone.** Copy `app-release-signed.apk` to the phone and open it; Android asks once to allow installs from that source.
+
+**Build it** (JDK 17 and the Android SDK; the signing key is kept outside the repository):
+
+```bash
+npm install --prefix ./.local/bubblewrap @bubblewrap/cli
+cd android
+node ../.local/bubblewrap/node_modules/@bubblewrap/cli/bin/bubblewrap.js update --skipVersionUpgrade
+node ../.local/bubblewrap/node_modules/@bubblewrap/cli/bin/bubblewrap.js build --skipPwaValidation
+```
+
+For Google Play, upload the `.aab` and add Play App Signing's SHA-256 fingerprint to `assetlinks.json`, next to the one already there.
+
 ## Enable and check Gemini Nano in Chrome
 
 On-device inference through Firebase AI Logic needs **Chrome on desktop**. Chrome on Android and iOS does not have it yet, so phones take the cloud route.

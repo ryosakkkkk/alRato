@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.alrato",
+      "sha256_cert_fingerprints": ["31:09:A8:BF:14:60:3D:2B:59:41:28:8D:EF:30:57:C3:CD:F9:6F:C0:D9:D9:70:5F:E7:E1:1D:C2:BE:34:76:CD"]
+    }
+  }
+]
