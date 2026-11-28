@@ -99,3 +99,16 @@ describe('the device check of a full solution', () => {
     expect(checkSolution('Halla las raíces de la parábola dibujada en la pizarra', output)?.status).toBe('verified');
   });
 });
+
+describe('the captions and ticks of a scene', () => {
+  it('sets the solver plain notation as a caption', async () => {
+    const { prettyFormula, subscriptNumber, superscriptNumber, niceTicks } = await import('../src/core/visual');
+    expect(prettyFormula('x^2+2x-3')).toBe('x² + 2x − 3');
+    expect(prettyFormula('sin(3t)')).toBe('sin(3t)');
+    expect(prettyFormula('2*pi*x')).toBe('2·π·x');
+    expect(`∫${subscriptNumber(0)}${superscriptNumber(2)}`).toBe('∫₀²');
+    expect(superscriptNumber(1.5)).toBe('1.5');
+    expect(niceTicks(-4.2, 2.3, 6)).toEqual([-4, -2, 0, 2]);
+    expect(niceTicks(0, 100, 4)).toEqual([0, 50, 100]);
+  });
+});

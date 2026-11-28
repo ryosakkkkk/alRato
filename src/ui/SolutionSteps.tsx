@@ -5,7 +5,7 @@ import type { VisualSpec } from '../core/types';
 import type { SolutionCheck } from '../core/verifier';
 import { useI18n } from '../i18n';
 import { CheckLine } from './Agent';
-import { AnswerCheckLine, FunctionGraph, MathMorph, writeBoard } from './Board';
+import { AnswerCheckLine, MathMorph, writeBoard } from './Board';
 import { Icon } from './Icon';
 import { MathText } from './MathText';
 import { MathVisual } from './Visuals';
@@ -41,6 +41,7 @@ export const SolutionSteps = memo(function SolutionSteps({
   const [stage, setStage] = useState(-1);
   const [starts, setStarts] = useState<number[]>([]);
   const [total, setTotal] = useState(0);
+  const legacyGraph = useMemo<VisualSpec | null>(() => (plot ? { kind: 'graph', f: plot } : null), [plot]);
   const board = useRef<HTMLDivElement>(null);
 
   // Before the first paint, so nothing flashes fully written and then disappears.
@@ -92,11 +93,8 @@ export const SolutionSteps = memo(function SolutionSteps({
           </li>
         ))}
       </ol>
-      {visual ? (
-        <MathVisual spec={visual} delayMs={total * 1000} instant={showAll} />
-      ) : (
-        plot && <FunctionGraph source={plot} label={t('solution.graph', { f: plot })} />
-      )}
+      {/* Older solutions only named a function to plot: they get the same graph scene. */}
+      {(visual ?? legacyGraph) && <MathVisual spec={(visual ?? legacyGraph)!} delayMs={total * 1000} instant={showAll} />}
       {check !== undefined
         ? check && <CheckLine check={check} repaired={repaired} />
         : plot && <AnswerCheckLine plot={plot} finalLine={lines[last].text} />}

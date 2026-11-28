@@ -1,7 +1,11 @@
-# alRato: brief de diseño (v4, 27 nov 2026)
+# alRato: brief de diseño (v5, 27 nov 2026)
 
-> **Cambio en v4:** el tema por defecto ahora es **blanco**: papel blanco con brillos suaves violeta, rosa y cian,
-> títulos en tinta casi negra y tarjetas de vidrio blanco. El oscuro casi negro (`#07070c`, nunca azul marino) queda
+> **Cambio en v5:** **colores puros, sin degradados.** Cada elemento tiene un solo color (violeta `#8b5cf6` de acento,
+> cian `#22d3ee` para las curvas, ámbar para una segunda curva, verde para lo comprobado, rosa para errores), el fondo
+> es blanco liso y las escenas de solución se dibujan como en el video "Claude what is math?": un trazador neón, valores
+> en vivo y un HUD con reloj, fórmula y línea de tiempo.
+>
+> **v4:** el tema por defecto es **blanco**, con títulos en tinta casi negra y tarjetas de vidrio blanco. El oscuro casi negro (`#07070c`, nunca azul marino) queda
 > como opción en Tu IA › Apariencia. Dos superficies son oscuras en ambos temas, a propósito: **la pizarra** donde se
 > escriben las soluciones (como los videos de matemáticas) y **la cámara**, que se abre a pantalla completa como una
 > app de cámara. La skill del proyecto `.claude/skills/alrato-design/SKILL.md` convierte este brief en un
@@ -18,16 +22,15 @@ aparece escrito en una pizarra negra, paso a paso, con un dibujo que explica la 
 
 ## Principios
 
-1. **Papel, no un color.** Fondo casi blanco (`#ffffff → #f6f6f9`) con dos brillos muy suaves (violeta arriba a la
-   derecha, rosa abajo a la izquierda). Nunca azul.
+1. **Fondo liso.** Blanco `#f6f6f9` sin brillos de color ni degradados. Nunca azul.
 2. **Títulos grandes en tinta.** Cada pantalla abre con un título enorme (Inter 750, interletrado cerrado) en `#0d0d14`.
    En oscuro, los títulos van en blanco con un halo violeta.
 3. **Vidrio con intención.** Tarjetas blancas translúcidas (desenfoque 20–28 px), borde de tinta al 8 %, sombra amplia
    y suave.
 4. **Bento con color por tipo de apunte.** Ejercicio = menta, fórmula = mantequilla, pizarra = lavanda, duda = rosa,
    apunte = blanco. La primera tarjeta ocupa dos columnas.
-5. **Un solo acento fuerte.** El chip activo es amarillo limón; el botón principal es una cápsula de tinta con texto
-   blanco. El degradado cian → violeta → rosa queda para la marca, los números de paso, las curvas y el progreso.
+5. **Un solo acento fuerte, en color puro.** El chip activo es amarillo limón; el botón principal es una cápsula de
+   tinta con texto blanco; el violeta `#8b5cf6` marca la marca, los números de paso y el progreso. Sin degradados.
 6. **Navegación como iOS 26.** Cápsula flotante de vidrio con tres pestañas y una "lente" que se desliza a la pestaña
    activa; la cámara es un círculo aparte, el gesto principal de la app.
 7. **La cámara es una cámara.** Pantalla completa y negra, un marco con esquinas rosas que se arrastran, modos
@@ -58,6 +61,7 @@ aparece escrito en una pizarra negra, paso a paso, con un dibujo que explica la 
 
 ## Qué no hacer
 
+- Degradados de color (por ejemplo azul → morado), en cualquier elemento.
 - Azul como color de fondo, en cualquier tema.
 - Texto pequeño en tinta dentro de la pizarra: la pizarra usa sus propios colores de tiza.
 - Degradados morados en todos los botones: el color fuerte es escaso a propósito.

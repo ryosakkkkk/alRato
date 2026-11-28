@@ -14,6 +14,7 @@ export function HomeScreen() {
   const [busy, setBusy] = useState(false);
   const captures = useLiveQuery(() => db.captures.orderBy('createdAt').reverse().toArray(), []);
   const due = useLiveQuery(() => db.cards.where('dueAt').belowOrEqual(Date.now()).toArray(), []);
+  const usage = useLiveQuery(() => db.usage.toArray(), []);
 
   if (!captures) return <div className="skeleton" />;
 
@@ -25,6 +26,10 @@ export function HomeScreen() {
   const onlySeededNotes = captures.length > 0 && captures.every((c) => c.id.startsWith('sample-'));
   const hour = new Date().getHours();
   const greeting = t(hour < 12 ? 'home.morning' : hour < 19 ? 'home.afternoon' : 'home.evening');
+  const today = new Intl.DateTimeFormat(lang, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  // The hybrid at a glance: how much of the AI work ran on this device.
+  const aiCalls = usage?.length ?? 0;
+  const onDeviceShare = aiCalls > 0 ? Math.round((100 * (usage ?? []).filter((u) => u.source === 'on_device').length) / aiCalls) : null;
 
   async function tryDemo() {
     setBusy(true);
@@ -58,7 +63,42 @@ export function HomeScreen() {
         </div>
       </header>
 
-      {captures.length > 0 && <h2 className="display-title">{greeting}</h2>}
+      {captures.length > 0 && (
+        <div className="home-greeting">
+          <h2 className="display-title">{greeting}</h2>
+          <p className="home-date">{today}</p>
+        </div>
+      )}
+
+      {captures.length > 0 && (
+        <section className="stats-row" aria-label={t('home.statsTitle')}>
+          <div className="stat-tile">
+            <strong>{captures.length}</strong>
+            <span>{t('home.statNotes')}</span>
+          </div>
+          <div className={dueCards.length > 0 ? 'stat-tile hot' : 'stat-tile'}>
+            <strong>{dueCards.length}</strong>
+            <span>{t('home.statDue')}</span>
+          </div>
+          <button className="stat-tile device" onClick={() => go('/ai')}>
+            <strong>{onDeviceShare === null ? '—' : `${onDeviceShare}%`}</strong>
+            <span>{t('home.statDevice')}</span>
+          </button>
+        </section>
+      )}
+
+      {captures.length > 0 && (
+        <button className="scan-card" onClick={() => go('/capture')}>
+          <span className="scan-tile">
+            <Icon name="camera" size={26} />
+          </span>
+          <span className="scan-text">
+            <strong>{t('home.scanTitle')}</strong>
+            <small>{t('home.scanBody')}</small>
+          </span>
+          <Icon name="next" size={22} />
+        </button>
+      )}
 
       {captures.length === 0 && (
         <section className="hero">
@@ -136,12 +176,6 @@ export function HomeScreen() {
         </section>
       )}
 
-      {captures.length > 0 && (
-        <button className="btn btn-primary btn-wide" onClick={() => go('/capture')}>
-          <Icon name="camera" />
-          {t('home.capture')}
-        </button>
-      )}
     </div>
   );
 }

@@ -20,8 +20,8 @@
     "path": "D:\\alRato\\.local\\android\\alrato-release.keystore",
     "alias": "alrato"
   },
-  "appVersionCode": 2,
-  "appVersion": "1.0.1",
+  "appVersionCode": 3,
+  "appVersion": "1.0.2",
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://alrato-e3564.web.app/manifest.webmanifest",

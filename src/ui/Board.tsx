@@ -1,7 +1,6 @@
 import katex from 'katex';
-import { useId, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { matchSymbols } from '../core/morph';
-import { compileFunction, frameFunction } from '../core/plot';
 import { checkAnswers } from '../core/verify';
 import { useI18n } from '../i18n';
 
@@ -175,83 +174,5 @@ export function AnswerCheckLine({ plot, finalLine }: { plot: string; finalLine: 
         <strong>{t('solution.checked')}</strong> {values}
       </span>
     </p>
-  );
-}
-
-const W = 300;
-const H = 160;
-
-/**
- * Draws a function of x on the board once the solution is written, and marks where it crosses
- * zero: for an equation, those points are its answers.
- */
-export function FunctionGraph({ source, label }: { source: string; label: string }) {
-  const { lang } = useI18n();
-  const gradient = `curve-${useId().replace(/:/g, '')}`;
-
-  const model = useMemo(() => {
-    const fn = compileFunction(source);
-    if (!fn) return null;
-    const frame = frameFunction(fn);
-    const span = frame.y1 - frame.y0;
-    const px = (x: number) => ((x - frame.x0) / (frame.x1 - frame.x0)) * W;
-    const py = (y: number) => ((frame.y1 - y) / span) * H;
-
-    let d = '';
-    let pen = false;
-    let prev: number | null = null;
-    for (let k = 0; k <= 240; k += 1) {
-      const x = frame.x0 + ((frame.x1 - frame.x0) * k) / 240;
-      const y = fn(x);
-      if (!Number.isFinite(y)) {
-        pen = false;
-        prev = null;
-        continue;
-      }
-      // A jump across the whole window is an asymptote: lift the pen instead of drawing a wall.
-      if (prev !== null && Math.abs(y - prev) > span) pen = false;
-      const cy = Math.max(-H, Math.min(2 * H, py(y)));
-      d += `${pen ? 'L' : 'M'}${px(x).toFixed(1)} ${cy.toFixed(1)} `;
-      pen = true;
-      prev = y;
-    }
-
-    const number = new Intl.NumberFormat(lang, { maximumFractionDigits: 2 });
-    const axisY = frame.y0 <= 0 && frame.y1 >= 0 ? py(0) : null;
-    return {
-      d,
-      axisY,
-      axisX: frame.x0 <= 0 && frame.x1 >= 0 ? px(0) : null,
-      roots: frame.roots.map((r) => ({
-        x: px(r),
-        y: py(0),
-        label: number.format(Math.abs(r) < 1e-9 ? 0 : r).replace('-', '−'),
-        below: py(0) + 24 <= H,
-      })),
-    };
-  }, [source, lang]);
-
-  if (!model) return null;
-  return (
-    <svg className="graph" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <defs>
-        <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#38bdf8" />
-          <stop offset="0.5" stopColor="#a78bfa" />
-          <stop offset="1" stopColor="#f472b6" />
-        </linearGradient>
-      </defs>
-      {model.axisY !== null && <line className="axis" x1={0} y1={model.axisY} x2={W} y2={model.axisY} />}
-      {model.axisX !== null && <line className="axis" x1={model.axisX} y1={0} x2={model.axisX} y2={H} />}
-      <path className="curve" d={model.d} pathLength={1} stroke={`url(#${gradient})`} />
-      {model.roots.map((root, i) => (
-        <g key={i} className="root" style={{ '--i': i } as CSSProperties}>
-          <circle cx={root.x} cy={root.y} r={5.5} />
-          <text x={root.x} y={root.below ? root.y + 20 : root.y - 12}>
-            {root.label}
-          </text>
-        </g>
-      ))}
-    </svg>
   );
 }

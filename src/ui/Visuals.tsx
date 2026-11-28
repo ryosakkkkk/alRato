@@ -1,15 +1,30 @@
-import { useEffect, useId, useMemo, useState, type CSSProperties } from 'react';
-import type { VisualSpec } from '../core/types';
-import { curvePath, projector, VIEW_H as H, VIEW_W as W, visualModel, type VisualModel, type Window } from '../core/visual';
+import { memo, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import type { VisualKind, VisualSpec } from '../core/types';
+import {
+  curvePath,
+  integrate,
+  niceTicks,
+  prettyFormula,
+  projector,
+  slope,
+  superscriptNumber,
+  subscriptNumber,
+  VIEW_H as H,
+  VIEW_W as W,
+  visualModel,
+  type VisualModel,
+  type Window,
+} from '../core/visual';
 import { useI18n } from '../i18n';
-import { FunctionGraph } from './Board';
+import type { MessageKey } from '../i18n/en';
 
 /*
- * The pictures under a worked solution, in the spirit of animated math videos: two curves meeting,
- * an area filled by rectangles that become the integral, secants turning into a tangent, a point on
- * the unit circle drawing the sine wave, a curve traced by a moving point. The solver only names the
- * picture and its formulas; every coordinate is computed and drawn here, on the device. They start
- * once the board is written (--total for CSS, `delayMs` for the ones driven by script).
+ * The pictures under a worked solution, made the way the "what is math?" videos are made: a scene
+ * driven by time. A tracer draws each curve with a neon glow and a short trail, the numbers it
+ * passes through are read out live, and a small HUD frames it all: the scene's name and a clock at
+ * the top, the formula and a timeline at the bottom. The solver only names the picture and its
+ * formulas; every coordinate is computed here, on the device. A scene starts once the board above
+ * it is written (`delayMs`) and jumps to its last frame when the student asks to see everything.
  */
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -43,145 +58,338 @@ function useProgress(ms: number, delayMs: number, instant: boolean): number {
 }
 
 const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+/** The part of the progress that falls between `from` and `to`, as 0 to 1. */
+const phase = (p: number, from: number, to: number) => Math.min(1, Math.max(0, (p - from) / (to - from)));
 
 function useNumber() {
   const { lang } = useI18n();
   return useMemo(() => {
     const format = new Intl.NumberFormat(lang, { maximumFractionDigits: 3 });
-    return (v: number) => format.format(Math.abs(v) < 1e-9 ? 0 : v).replace('-', '−');
+    return (v: number) => (Number.isFinite(v) ? format.format(Math.abs(v) < 1e-9 ? 0 : v).replace('-', '−') : '—');
   }, [lang]);
 }
 
-function Gradients({ id }: { id: string }) {
+/** One pure colour per element, no gradients: cyan for the curve, amber for a second one or a tangent. */
+const CYAN = '#22d3ee';
+const AMBER = '#fbbf24';
+const AREA = 'rgb(34 211 238 / 0.24)';
+
+/** The neon glow every scene shares. Memoized, like the grid: only the moving parts redraw each frame. */
+const Defs = memo(function Defs({ id }: { id: string }) {
   return (
     <defs>
-      <linearGradient id={`${id}-a`} x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stopColor="#38bdf8" />
-        <stop offset="0.5" stopColor="#a78bfa" />
-        <stop offset="1" stopColor="#f472b6" />
-      </linearGradient>
-      <linearGradient id={`${id}-b`} x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stopColor="#fde047" />
-        <stop offset="1" stopColor="#fb923c" />
-      </linearGradient>
+      <filter id={`${id}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
     </defs>
   );
+});
+
+/** A faint grid, the axes with tick marks, and a few tick labels, like a plotting instrument. */
+const Grid = memo(function Grid({ w }: { w: Window }) {
+  const show = useNumber();
+  const { px, py } = projector(w);
+  const xs = niceTicks(w.x0, w.x1, 6);
+  const ys = niceTicks(w.y0, w.y1, 4);
+  const axisY = w.y0 <= 0 && w.y1 >= 0 ? py(0) : null;
+  const axisX = w.x0 <= 0 && w.x1 >= 0 ? px(0) : null;
+  return (
+    <g className="scene-grid">
+      {xs.map((x) => (
+        <line key={`gx${x}`} x1={px(x)} y1={0} x2={px(x)} y2={H} />
+      ))}
+      {ys.map((y) => (
+        <line key={`gy${y}`} x1={0} y1={py(y)} x2={W} y2={py(y)} />
+      ))}
+      {axisY !== null && <line className="scene-axis" x1={0} y1={axisY} x2={W} y2={axisY} />}
+      {axisX !== null && <line className="scene-axis" x1={axisX} y1={0} x2={axisX} y2={H} />}
+      {axisY !== null &&
+        xs.map((x) => (
+          <g key={`tx${x}`}>
+            <line className="scene-axis" x1={px(x)} y1={axisY - 3} x2={px(x)} y2={axisY + 3} />
+            {x !== 0 && (
+              <text className="scene-tick" x={px(x)} y={Math.min(H - 3, axisY + 12)}>
+                {show(x)}
+              </text>
+            )}
+          </g>
+        ))}
+    </g>
+  );
+});
+
+interface SceneProps {
+  kind: VisualKind;
+  label: string;
+  formula: string;
+  progress: number;
+  duration: number;
+  readouts: string[];
+  children: ReactNode;
 }
 
-function Axes({ w }: { w: Window }) {
-  const { px, py } = projector(w);
+/** The frame of every scene: name and clock above, the plot with its live readouts, formula and timeline below. */
+function Scene({ kind, label, formula, progress, duration, readouts, children }: SceneProps) {
+  const { t } = useI18n();
   return (
-    <>
-      {w.y0 <= 0 && w.y1 >= 0 && <line className="axis" x1={0} y1={py(0)} x2={W} y2={py(0)} />}
-      {w.x0 <= 0 && w.x1 >= 0 && <line className="axis" x1={px(0)} y1={0} x2={px(0)} y2={H} />}
-    </>
+    <figure className="scene" role="img" aria-label={label}>
+      <div className="scene-hud" aria-hidden="true">
+        <span className="scene-brand">
+          <b>alRato</b> · {t(`scene.${kind}` as MessageKey)}
+        </span>
+        <span className="scene-clock">t = {((progress * duration) / 1000).toFixed(2)} s</span>
+      </div>
+      <div className="scene-stage">
+        <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+          {children}
+        </svg>
+        {readouts.length > 0 && (
+          <div className="scene-readouts" aria-hidden="true">
+            {readouts.map((line, i) => (
+              <span key={i}>{line}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="scene-foot" aria-hidden="true">
+        <span className="scene-formula">{formula}</span>
+        <span className="scene-timeline">
+          <i style={{ width: `${progress * 100}%` }} />
+        </span>
+      </div>
+    </figure>
   );
 }
 
 type Model<K extends VisualModel['kind']> = Extract<VisualModel, { kind: K }>;
 
-function Intersection({ model, label }: { model: Model<'intersection'>; label: string }) {
+interface Timed {
+  delayMs: number;
+  instant: boolean;
+}
+
+/** A glowing point with a soft halo: the tracer that draws a curve. */
+function Tracer({ x, y, glow, color = '#fff' }: { x: number; y: number; glow: string; color?: string }) {
+  return (
+    <g className="scene-tracer" filter={`url(#${glow})`}>
+      <circle cx={x} cy={y} r={7} className="scene-halo" />
+      <circle cx={x} cy={y} r={3.4} fill={color} />
+    </g>
+  );
+}
+
+/** One function, drawn by a tracer from left to right; each zero lights up as the tracer reaches it. */
+function GraphScene({ model, spec, label, delayMs, instant }: { model: Model<'graph'>; spec: VisualSpec; label: string } & Timed) {
   const id = useId().replace(/:/g, '');
   const show = useNumber();
-  const { px, py } = projector(model.window);
+  const duration = 3200;
+  const progress = useProgress(duration, delayMs, instant);
+  const { f, window: w, roots } = model;
+  const { px, py } = projector(w);
+  const xt = w.x0 + (w.x1 - w.x0) * ease(progress);
+  const yt = f(xt);
+  const done = progress >= 1;
+  const passed = roots.filter((r) => r <= xt + 1e-9);
+  const readouts = done
+    ? roots.length > 0
+      ? ['f(x) = 0', roots.map((r) => `x = ${show(r)}`).join(' · ')]
+      : []
+    : [`x = ${show(xt)}`, `f(x) = ${show(yt)}`];
   return (
-    <svg className="graph visual" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <Gradients id={id} />
-      <Axes w={model.window} />
-      <path className="curve" d={curvePath(model.f, model.window)} pathLength={1} stroke={`url(#${id}-a)`} />
-      <path className="curve curve-2" d={curvePath(model.g, model.window)} pathLength={1} stroke={`url(#${id}-b)`} />
-      {model.points.map((p, i) => (
-        <g key={i} className="root" style={{ '--i': i } as CSSProperties}>
-          <circle cx={px(p.x)} cy={py(p.y)} r={5.5} />
-          <text x={px(p.x)} y={py(p.y) - 12 < 12 ? py(p.y) + 22 : py(p.y) - 12}>
+    <Scene kind="graph" label={label} formula={`y = ${prettyFormula(spec.f)}`} progress={progress} duration={duration} readouts={readouts}>
+      <Defs id={id} />
+      <Grid w={w} />
+      <path className="scene-curve" d={curvePath(f, w, w.x0, Math.max(w.x0 + 1e-6, xt), 240)} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      {!done && Number.isFinite(yt) && (
+        <>
+          <line className="scene-drop" x1={px(xt)} y1={py(yt)} x2={px(xt)} y2={py(Math.min(w.y1, Math.max(w.y0, 0)))} />
+          <Tracer x={px(xt)} y={py(yt)} glow={`${id}-glow`} />
+        </>
+      )}
+      {passed.map((r, i) => (
+        <g key={i} className="scene-root" style={{ '--x': `${px(r)}px`, '--y': `${py(0)}px` } as CSSProperties}>
+          <circle className="scene-ring" cx={px(r)} cy={py(0)} r={6} />
+          <circle className="scene-dot" cx={px(r)} cy={py(0)} r={5} filter={`url(#${id}-glow)`} />
+          <text className="scene-label" x={px(r)} y={py(0) + 20 <= H - 2 ? py(0) + 20 : py(0) - 12}>
+            {show(r)}
+          </text>
+        </g>
+      ))}
+    </Scene>
+  );
+}
+
+/** Two functions drawn together; each point where they meet lights up with its coordinates. */
+function IntersectionScene({ model, spec, label, delayMs, instant }: { model: Model<'intersection'>; spec: VisualSpec; label: string } & Timed) {
+  const id = useId().replace(/:/g, '');
+  const show = useNumber();
+  const duration = 3400;
+  const progress = useProgress(duration, delayMs, instant);
+  const { f, g, window: w, points } = model;
+  const { px, py } = projector(w);
+  const xt = w.x0 + (w.x1 - w.x0) * ease(progress);
+  const done = progress >= 1;
+  const passed = points.filter((p) => p.x <= xt + 1e-9);
+  const readouts = done
+    ? points.map((p) => `(${show(p.x)}, ${show(p.y)})`)
+    : [`x = ${show(xt)}`, `f − g = ${show(f(xt) - g(xt))}`];
+  const end = Math.max(w.x0 + 1e-6, xt);
+  return (
+    <Scene
+      kind="intersection"
+      label={label}
+      formula={`y = ${prettyFormula(spec.f)}   ·   y = ${prettyFormula(spec.g ?? '')}`}
+      progress={progress}
+      duration={duration}
+      readouts={readouts}
+    >
+      <Defs id={id} />
+      <Grid w={w} />
+      <path className="scene-curve" d={curvePath(f, w, w.x0, end, 240)} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      <path className="scene-curve" d={curvePath(g, w, w.x0, end, 240)} stroke={AMBER} filter={`url(#${id}-glow)`} />
+      {!done && Number.isFinite(f(xt)) && <Tracer x={px(xt)} y={py(f(xt))} glow={`${id}-glow`} />}
+      {!done && Number.isFinite(g(xt)) && <Tracer x={px(xt)} y={py(g(xt))} glow={`${id}-glow`} color="#fde047" />}
+      {passed.map((p, i) => (
+        <g key={i} className="scene-root">
+          <circle className="scene-ring" cx={px(p.x)} cy={py(p.y)} r={6} />
+          <circle className="scene-dot" cx={px(p.x)} cy={py(p.y)} r={5} filter={`url(#${id}-glow)`} />
+          <text className="scene-label" x={px(p.x)} y={py(p.y) - 12 < 12 ? py(p.y) + 22 : py(p.y) - 12}>
             ({show(p.x)}, {show(p.y)})
           </text>
         </g>
       ))}
-    </svg>
+    </Scene>
   );
 }
 
 const BARS = 8;
 
-function Area({ model, label }: { model: Model<'area'>; label: string }) {
+/** ∫₀² when both bounds are whole numbers, otherwise the bounds in brackets. */
+function integralSign(a: number, b: number, show: (v: number) => string): string {
+  return Number.isInteger(a) && Number.isInteger(b) ? `∫${subscriptNumber(a)}${superscriptNumber(b)}` : `∫[${show(a)}, ${show(b)}]`;
+}
+
+/** The curve first, then the area under it fills from a to b while the integral counts up. */
+function AreaScene({ model, spec, label, delayMs, instant }: { model: Model<'area'>; spec: VisualSpec; label: string } & Timed) {
   const id = useId().replace(/:/g, '');
   const show = useNumber();
-  const { px, py } = projector(model.window);
-  const { f, a, b } = model;
+  const duration = 4200;
+  const progress = useProgress(duration, delayMs, instant);
+  const { f, a, b, window: w, value } = model;
+  const { px, py } = projector(w);
+  const drawn = w.x0 + (w.x1 - w.x0) * ease(phase(progress, 0, 0.3));
+  const xs = a + (b - a) * ease(phase(progress, 0.3, 0.95));
+  const sweeping = progress >= 0.3;
+  const partial = sweeping && xs > a ? integrate(f, a, xs, 200) : 0;
+  const done = progress >= 1;
   const width = (b - a) / BARS;
-  const bars = Array.from({ length: BARS }, (_, i) => {
-    const v = f(a + (i + 0.5) * width);
-    if (!Number.isFinite(v)) return null;
-    const top = Math.max(-H, Math.min(2 * H, py(v)));
-    return { x: px(a + i * width), w: px(a + (i + 1) * width) - px(a + i * width), y: Math.min(top, py(0)), h: Math.abs(top - py(0)), neg: v < 0 };
-  });
-  const fill = `M${px(a).toFixed(1)} ${py(0).toFixed(1)} ${curvePath(f, model.window, a, b, 120).replace(/^M/, 'L')} L${px(b).toFixed(1)} ${py(0).toFixed(1)} Z`;
+  const fill =
+    xs > a
+      ? `M${px(a).toFixed(1)} ${py(0).toFixed(1)} ${curvePath(f, w, a, xs, 120).replace(/^M/, 'L')} L${px(xs).toFixed(1)} ${py(0).toFixed(1)} Z`
+      : '';
+  const readouts = done ? [`∫ = ${show(value ?? 0)}`] : sweeping ? [`x = ${show(xs)}`, `∫ = ${show(partial ?? 0)}`] : [`x = ${show(drawn)}`];
   return (
-    <svg className="graph visual" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <Gradients id={id} />
-      <Axes w={model.window} />
-      {bars.map(
-        (bar, i) =>
-          bar && (
+    <Scene
+      kind="area"
+      label={label}
+      formula={`${integralSign(a, b, show)} ${prettyFormula(spec.f)} dx`}
+      progress={progress}
+      duration={duration}
+      readouts={readouts}
+    >
+      <Defs id={id} />
+      <Grid w={w} />
+      {sweeping &&
+        Array.from({ length: BARS }, (_, i) => {
+          const left = a + i * width;
+          if (left + width / 2 > xs) return null;
+          const v = f(left + width / 2);
+          if (!Number.isFinite(v)) return null;
+          const top = Math.max(-H, Math.min(2 * H, py(v)));
+          return (
             <rect
               key={i}
-              className={bar.neg ? 'riemann neg' : 'riemann'}
-              style={{ '--i': i } as CSSProperties}
-              x={bar.x}
-              y={bar.y}
-              width={Math.max(0, bar.w - 1)}
-              height={bar.h}
+              className="scene-bar"
+              x={px(left)}
+              y={Math.min(top, py(0))}
+              width={Math.max(0, px(left + width) - px(left) - 1)}
+              height={Math.abs(top - py(0))}
             />
-          ),
+          );
+        })}
+      {fill && <path className="scene-fill" d={fill} fill={AREA} />}
+      <line className="scene-bound" x1={px(a)} y1={0} x2={px(a)} y2={H} />
+      <line className="scene-bound" x1={px(b)} y1={0} x2={px(b)} y2={H} />
+      <path className="scene-curve" d={curvePath(f, w, w.x0, Math.max(w.x0 + 1e-6, drawn), 240)} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      {sweeping && !done && Number.isFinite(f(xs)) && (
+        <>
+          <line className="scene-drop" x1={px(xs)} y1={py(f(xs))} x2={px(xs)} y2={py(0)} />
+          <Tracer x={px(xs)} y={py(f(xs))} glow={`${id}-glow`} />
+        </>
       )}
-      <path className="area-fill" d={fill} />
-      <line className="bound" x1={px(a)} y1={0} x2={px(a)} y2={H} />
-      <line className="bound" x1={px(b)} y1={0} x2={px(b)} y2={H} />
-      <path className="curve" d={curvePath(f, model.window)} pathLength={1} stroke={`url(#${id}-a)`} />
-      {model.value !== null && (
-        <text className="label" x={px((a + b) / 2)} y={16}>
-          ∫ = {show(model.value)}
-        </text>
-      )}
-    </svg>
+      {!sweeping && Number.isFinite(f(drawn)) && <Tracer x={px(drawn)} y={py(f(drawn))} glow={`${id}-glow`} />}
+    </Scene>
   );
 }
 
-function Tangent({ model, label }: { model: Model<'tangent'>; label: string }) {
+/** The curve, then a point that slides to x = a carrying its tangent line, its slope read out live. */
+function TangentScene({ model, spec, label, delayMs, instant }: { model: Model<'tangent'>; spec: VisualSpec; label: string } & Timed) {
   const id = useId().replace(/:/g, '');
   const show = useNumber();
-  const { px, py } = projector(model.window);
-  const { f, a, fa, m, window: w } = model;
-  const line = (slope: number) => ({ x1: px(w.x0), y1: py(fa + slope * (w.x0 - a)), x2: px(w.x1), y2: py(fa + slope * (w.x1 - a)) });
-  const secants = [2.2, 1.1, 0.45]
-    .map((h) => (f(a + h) - fa) / h)
-    .filter((s) => Number.isFinite(s))
-    .map(line);
+  const duration = 4000;
+  const progress = useProgress(duration, delayMs, instant);
+  const { f, a, m, window: w } = model;
+  const { px, py } = projector(w);
+  const drawn = w.x0 + (w.x1 - w.x0) * ease(phase(progress, 0, 0.35));
+  const start = w.x0 + (w.x1 - w.x0) * 0.12;
+  const slide = phase(progress, 0.35, 1);
+  const xt = slide > 0 ? start + (a - start) * ease(slide) : start;
+  const yt = f(xt);
+  const mt = slide >= 1 ? m : slope(f, xt);
+  // The tangent as a segment of fixed length on screen, whatever the slope.
+  const sx = px(xt + 1) - px(xt);
+  const sy = py(yt + mt) - py(yt);
+  const len = Math.hypot(sx, sy) || 1;
+  const half = 70;
+  const ux = (sx / len) * half;
+  const uy = (sy / len) * half;
+  const showTangent = progress >= 0.35 && Number.isFinite(yt) && Number.isFinite(mt);
+  const done = progress >= 1;
+  const readouts = done ? [`x = ${show(a)}`, `f′(${show(a)}) = ${show(m)}`] : progress >= 0.35 ? [`x = ${show(xt)}`, `m = ${show(mt)}`] : [];
   return (
-    <svg className="graph visual" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <Gradients id={id} />
-      <Axes w={w} />
-      <path className="curve" d={curvePath(f, w)} pathLength={1} stroke={`url(#${id}-a)`} />
-      {secants.map((s, i) => (
-        <line key={i} className="secant" style={{ '--i': i } as CSSProperties} {...s} />
-      ))}
-      <line className="tangent-line" pathLength={1} {...line(m)} />
-      <g className="root" style={{ '--i': 0 } as CSSProperties}>
-        <circle cx={px(a)} cy={py(fa)} r={5.5} />
-      </g>
-      <text className="label" x={W / 2} y={16}>
-        f′({show(a)}) = {show(m)}
-      </text>
-    </svg>
+    <Scene
+      kind="tangent"
+      label={label}
+      formula={`y = ${prettyFormula(spec.f)}   ·   x = ${show(a)}`}
+      progress={progress}
+      duration={duration}
+      readouts={readouts}
+    >
+      <Defs id={id} />
+      <Grid w={w} />
+      <path className="scene-curve" d={curvePath(f, w, w.x0, Math.max(w.x0 + 1e-6, drawn), 240)} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      {showTangent && (
+        <>
+          <line className="scene-tangent" x1={px(xt) - ux} y1={py(yt) - uy} x2={px(xt) + ux} y2={py(yt) + uy} filter={`url(#${id}-glow)`} />
+          <Tracer x={px(xt)} y={py(yt)} glow={`${id}-glow`} color={done ? '#34d399' : '#fff'} />
+        </>
+      )}
+      {progress < 0.35 && Number.isFinite(f(drawn)) && <Tracer x={px(drawn)} y={py(f(drawn))} glow={`${id}-glow`} />}
+    </Scene>
   );
 }
 
 /** The point goes once around the circle and draws the wave as it goes, then settles on the angle. */
-function UnitCircle({ model, label, delayMs, instant }: { model: Model<'unit_circle'>; label: string; delayMs: number; instant: boolean }) {
+function UnitCircleScene({ model, label, delayMs, instant }: { model: Model<'unit_circle'>; label: string } & Timed) {
   const id = useId().replace(/:/g, '');
   const show = useNumber();
-  const progress = useProgress(4600, delayMs, instant);
+  const duration = 4600;
+  const progress = useProgress(duration, delayMs, instant);
   const { trig, angle } = model;
   const value = (t: number) => (trig === 'sin' ? Math.sin(t) : trig === 'cos' ? Math.cos(t) : Math.tan(t));
   const cx = 64;
@@ -197,7 +405,8 @@ function UnitCircle({ model, label, delayMs, instant }: { model: Model<'unit_cir
   const drawn = Math.min(theta, 2 * Math.PI);
   const shown = progress >= 1 ? target : theta % (2 * Math.PI);
 
-  const waveY = (t: number) => cy - R * Math.max(-2.4, Math.min(2.4, value(t)));
+  const clip = (v: number) => Math.max(-2.4, Math.min(2.4, v));
+  const waveY = (t: number) => cy - R * clip(value(t));
   const waveXAt = (t: number) => waveX0 + (t / (2 * Math.PI)) * waveW;
   let wave = '';
   let pen = false;
@@ -213,55 +422,80 @@ function UnitCircle({ model, label, delayMs, instant }: { model: Model<'unit_cir
   }
   const px = cx + R * Math.cos(theta);
   const py = cy - R * Math.sin(theta);
-  const linkX = progress >= 1 ? waveXAt(target) : waveXAt(drawn);
+  const along = progress >= 1 ? target : drawn;
+  const linkX = waveXAt(along);
   const arcEnd = { x: cx + 15 * Math.cos(shown), y: cy - 15 * Math.sin(shown) };
   const degrees = (shown * 180) / Math.PI;
+  const tanEnd = cy - R * Math.max(-1.5, Math.min(1.5, Math.tan(theta)));
   return (
-    <svg className="graph visual unit" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <Gradients id={id} />
-      <line className="axis" x1={cx - R - 8} y1={cy} x2={W - 4} y2={cy} />
-      <line className="axis" x1={cx} y1={cy - R - 8} x2={cx} y2={cy + R + 8} />
-      <circle className="ring" cx={cx} cy={cy} r={R} />
+    <Scene
+      kind="unit_circle"
+      label={label}
+      formula={`y = ${trig} θ`}
+      progress={progress}
+      duration={duration}
+      readouts={[`θ = ${show(shown)} rad · ${show(Math.round(degrees * 10) / 10)}°`, `${trig} θ = ${show(value(shown))}`]}
+    >
+      <Defs id={id} />
+      <g className="scene-grid">
+        <line className="scene-axis" x1={cx - R - 8} y1={cy} x2={W - 4} y2={cy} />
+        <line className="scene-axis" x1={cx} y1={cy - R - 8} x2={cx} y2={cy + R + 8} />
+      </g>
+      <circle className="scene-ring-circle" cx={cx} cy={cy} r={R} filter={`url(#${id}-glow)`} />
       {shown > 0.02 && (
-        <path className="arc" d={`M${cx + 15} ${cy} A15 15 0 ${shown > Math.PI ? 1 : 0} 0 ${arcEnd.x.toFixed(1)} ${arcEnd.y.toFixed(1)}`} />
+        <path className="scene-arc" d={`M${cx + 15} ${cy} A15 15 0 ${shown > Math.PI ? 1 : 0} 0 ${arcEnd.x.toFixed(1)} ${arcEnd.y.toFixed(1)}`} />
       )}
-      <path className="wave" d={wave.trim()} stroke={`url(#${id}-a)`} />
-      <line className="radius" x1={cx} y1={cy} x2={px} y2={py} />
-      {trig === 'cos' && <line className="bar-cos" x1={cx} y1={cy} x2={px} y2={cy} />}
-      {trig === 'sin' && <line className="bar-sin" x1={px} y1={cy} x2={px} y2={py} />}
+      <path className="scene-curve scene-wave" d={wave.trim()} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      <line className="scene-radius" x1={cx} y1={cy} x2={px} y2={py} />
+      {trig === 'cos' && <line className="scene-bar-cos" x1={cx} y1={cy} x2={px} y2={cy} filter={`url(#${id}-glow)`} />}
+      {trig === 'sin' && <line className="scene-bar-sin" x1={px} y1={cy} x2={px} y2={py} filter={`url(#${id}-glow)`} />}
       {trig === 'tan' && (
-        // The tangent is the height where the radius, extended, meets the line touching the circle at (1, 0).
         <>
-          <line className="link" x1={cx} y1={cy} x2={cx + R} y2={cy - R * Math.max(-1.5, Math.min(1.5, Math.tan(theta)))} />
-          <line className="bar-sin" x1={cx + R} y1={cy} x2={cx + R} y2={cy - R * Math.max(-1.5, Math.min(1.5, Math.tan(theta)))} />
+          <line className="scene-drop" x1={cx} y1={cy} x2={cx + R} y2={tanEnd} />
+          <line className="scene-bar-sin" x1={cx + R} y1={cy} x2={cx + R} y2={tanEnd} filter={`url(#${id}-glow)`} />
         </>
       )}
-      {trig === 'sin' && <line className="link" x1={px} y1={py} x2={linkX} y2={waveY(progress >= 1 ? target : drawn)} />}
-      <circle className="point" cx={px} cy={py} r={5} />
-      <circle className="point" cx={linkX} cy={waveY(progress >= 1 ? target : drawn)} r={4} />
-      {progress >= 1 && angle !== null && (
-        <text className="label still" x={waveX0 + waveW / 2} y={16}>
-          θ = {show(Math.round(degrees * 10) / 10)}° · {trig} θ = {show(value(target))}
-        </text>
-      )}
-    </svg>
+      {trig === 'sin' && <line className="scene-drop" x1={px} y1={py} x2={linkX} y2={waveY(along)} />}
+      <Tracer x={px} y={py} glow={`${id}-glow`} color="#f472b6" />
+      <Tracer x={linkX} y={waveY(along)} glow={`${id}-glow`} />
+    </Scene>
   );
 }
 
-/** A curve x(t), y(t), drawn once and then traced by a moving point. */
-function Parametric({ model, label, delayMs, instant }: { model: Model<'parametric'>; label: string; delayMs: number; instant: boolean }) {
+/** A curve x(t), y(t), drawn by a tracer with a bright trail, then left glowing. */
+function ParametricScene({ model, spec, label, delayMs, instant }: { model: Model<'parametric'>; spec: VisualSpec; label: string } & Timed) {
   const id = useId().replace(/:/g, '');
-  const progress = useProgress(3200, delayMs + 1300, instant);
-  const { px, py } = projector(model.window);
-  const d = model.points.map(([x, y], k) => `${k === 0 ? 'M' : 'L'}${px(x).toFixed(1)} ${py(y).toFixed(1)}`).join(' ');
-  const [dx, dy] = model.points[Math.min(model.points.length - 1, Math.round(progress * (model.points.length - 1)))];
+  const show = useNumber();
+  const duration = 4200;
+  const progress = useProgress(duration, delayMs, instant);
+  const { points, window: w } = model;
+  const { px, py } = projector(w);
+  const n = points.length;
+  const head = Math.max(1, Math.round(progress * (n - 1)));
+  const path = (from: number, to: number) =>
+    points
+      .slice(from, to + 1)
+      .map(([x, y], k) => `${k === 0 ? 'M' : 'L'}${px(x).toFixed(1)} ${py(y).toFixed(1)}`)
+      .join(' ');
+  const trail = Math.max(0, head - Math.round(n * 0.08));
+  const [hx, hy] = points[Math.min(n - 1, head)];
+  const t = (spec.a ?? 0) + ((spec.b ?? 2 * Math.PI) - (spec.a ?? 0)) * (head / (n - 1));
+  const done = progress >= 1;
   return (
-    <svg className="graph visual" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-      <Gradients id={id} />
-      <Axes w={model.window} />
-      <path className="curve" d={d} pathLength={1} stroke={`url(#${id}-a)`} />
-      {progress > 0 && <circle className="point" cx={px(dx)} cy={py(dy)} r={5} />}
-    </svg>
+    <Scene
+      kind="parametric"
+      label={label}
+      formula={`( ${prettyFormula(spec.f)}, ${prettyFormula(spec.g ?? '')} )`}
+      progress={progress}
+      duration={duration}
+      readouts={[`t = ${show(t)}`, `(x, y) = (${show(hx)}, ${show(hy)})`]}
+    >
+      <Defs id={id} />
+      <Grid w={w} />
+      <path className="scene-curve scene-dim" d={path(0, head)} stroke={CYAN} filter={`url(#${id}-glow)`} />
+      {!done && <path className="scene-curve scene-trail" d={path(trail, head)} filter={`url(#${id}-glow)`} />}
+      {!done && <Tracer x={px(hx)} y={py(hy)} glow={`${id}-glow`} />}
+    </Scene>
   );
 }
 
@@ -271,18 +505,19 @@ export function MathVisual({ spec, delayMs, instant }: { spec: VisualSpec; delay
   const model = useMemo(() => visualModel(spec), [spec]);
   const show = useNumber();
   if (!model) return null;
+  const timed = { delayMs, instant };
   switch (model.kind) {
     case 'graph':
-      return <FunctionGraph source={spec.f} label={t('solution.graph', { f: spec.f })} />;
+      return <GraphScene model={model} spec={spec} label={t('solution.graph', { f: spec.f })} {...timed} />;
     case 'intersection':
-      return <Intersection model={model} label={t('visual.intersection', { f: spec.f, g: spec.g ?? '' })} />;
+      return <IntersectionScene model={model} spec={spec} label={t('visual.intersection', { f: spec.f, g: spec.g ?? '' })} {...timed} />;
     case 'area':
-      return <Area model={model} label={t('visual.area', { f: spec.f, a: show(model.a), b: show(model.b) })} />;
+      return <AreaScene model={model} spec={spec} label={t('visual.area', { f: spec.f, a: show(model.a), b: show(model.b) })} {...timed} />;
     case 'tangent':
-      return <Tangent model={model} label={t('visual.tangent', { f: spec.f, a: show(model.a) })} />;
+      return <TangentScene model={model} spec={spec} label={t('visual.tangent', { f: spec.f, a: show(model.a) })} {...timed} />;
     case 'unit_circle':
-      return <UnitCircle model={model} label={t('visual.unitCircle', { f: model.trig })} delayMs={delayMs} instant={instant} />;
+      return <UnitCircleScene model={model} label={t('visual.unitCircle', { f: model.trig })} {...timed} />;
     case 'parametric':
-      return <Parametric model={model} label={t('visual.parametric', { f: spec.f, g: spec.g ?? '' })} delayMs={delayMs} instant={instant} />;
+      return <ParametricScene model={model} spec={spec} label={t('visual.parametric', { f: spec.f, g: spec.g ?? '' })} {...timed} />;
   }
 }

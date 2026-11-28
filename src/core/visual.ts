@@ -185,3 +185,43 @@ export function visualModel(spec: VisualSpec): VisualModel | null {
     }
   }
 }
+
+/** Round tick values for an axis: steps of 1, 2 or 5 times a power of ten, about `count` of them. */
+export function niceTicks(min: number, max: number, count = 6): number[] {
+  const span = max - min;
+  if (!(span > 0) || !Number.isFinite(span)) return [];
+  const raw = span / Math.max(1, count);
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * power).find((s) => s >= raw) ?? 10 * power;
+  const out: number[] = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+  return out;
+}
+
+const SUPERSCRIPTS: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+const SUBSCRIPTS: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '-': '₋' };
+
+/** "x^2+2x-3" reads as "x² + 2x − 3": the plain notation the solver writes, set for a caption. */
+export function prettyFormula(plain: string): string {
+  return plain
+    .replace(/\s+/g, '')
+    .replace(/\^(\d)/g, (_, d: string) => SUPERSCRIPTS[d])
+    .replace(/\*\*/g, '^')
+    .replace(/\*/g, '·')
+    .replace(/sqrt/g, '√')
+    .replace(/pi/g, 'π')
+    .replace(/([^eE(^])([+-])/g, '$1 $2 ')
+    .replace(/-/g, '−');
+}
+
+/** A bound written under or over an integral sign: ₀ for 0, otherwise the plain number. */
+export function subscriptNumber(value: number): string {
+  const text = String(Math.round(value * 1000) / 1000);
+  return /^-?\d+$/.test(text) ? [...text].map((c) => SUBSCRIPTS[c] ?? c).join('') : text;
+}
+
+/** A bound written over an integral sign: ² for 2. */
+export function superscriptNumber(value: number): string {
+  const text = String(Math.round(value * 1000) / 1000);
+  return /^-?\d+$/.test(text) ? [...text].map((c) => (c === '-' ? '⁻' : SUPERSCRIPTS[c] ?? c)).join('') : text;
+}
